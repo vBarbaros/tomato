@@ -154,8 +154,6 @@ export default function History({ history, tasks }: Props) {
 
   return (
     <div className="view">
-      <h2>History</h2>
-      
       <div className="stats">
         <div className="stat-card">
           <div className="stat-value">{totalSessions}</div>

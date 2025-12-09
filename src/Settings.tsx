@@ -12,8 +12,6 @@ export default function Settings({ settings, onSave }: Props) {
 
   return (
     <div className="view">
-      <h2>Settings</h2>
-      
       <div className="settings-group">
         <h3>Timer Durations (minutes)</h3>
         

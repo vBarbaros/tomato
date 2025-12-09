@@ -311,8 +311,6 @@ function App() {
       <div className="view-container">
         {view === 'timer' && (
           <div className="timer-view">
-            <h2>Timer</h2>
-
           <div className="controls">
             <button onClick={toggleTimer} className="control-btn primary">
               {isRunning ? '⏸' : '▶'}

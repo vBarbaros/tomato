@@ -49,8 +49,6 @@ export default function Tasks({ tasks, currentTaskId, onAddTask, onDeleteTask, o
 
   return (
     <div className="view">
-      <h2>Tasks</h2>
-      
       <div className="task-form">
         <div className="task-input-wrapper">
           <div className="color-dropdown" ref={dropdownRef}>
