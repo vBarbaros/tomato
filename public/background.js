@@ -95,6 +95,8 @@ async function playSound(soundType) {
 
 function handleTimerComplete() {
   timerState.isRunning = false;
+  
+  console.log('Timer complete! Mode:', timerState.mode);
 
   // Play sound if enabled
   if (timerState.settings.soundEnabled) {
@@ -111,6 +113,36 @@ function handleTimerComplete() {
     requireInteraction: true,
     silent: true
   });
+
+  // Save history entry for completed work sessions
+  if (timerState.mode === 'work') {
+    console.log('Saving work session to history...');
+    chrome.storage.local.get(['pomodoro_current_task', 'pomodoro_tasks', 'pomodoro_history'], (result) => {
+      const currentTaskId = result.pomodoro_current_task || null;
+      const tasks = result.pomodoro_tasks ? JSON.parse(result.pomodoro_tasks) : [];
+      const history = result.pomodoro_history ? JSON.parse(result.pomodoro_history) : [];
+      
+      console.log('Current task:', currentTaskId);
+      console.log('Existing history entries:', history.length);
+      
+      const task = tasks.find(t => t.id === currentTaskId);
+      const entry = {
+        id: Date.now().toString(),
+        taskId: currentTaskId || 'none',
+        taskName: task?.name || 'No Task',
+        mode: 'work',
+        duration: timerState.settings.workDuration * 60,
+        completedAt: Date.now()
+      };
+      
+      console.log('New history entry:', entry);
+      
+      history.unshift(entry);
+      chrome.storage.local.set({ pomodoro_history: JSON.stringify(history) }, () => {
+        console.log('History saved! Total entries:', history.length);
+      });
+    });
+  }
 
   if (timerState.mode === 'work') {
     timerState.sessions++;

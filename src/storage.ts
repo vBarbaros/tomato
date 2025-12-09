@@ -7,6 +7,19 @@ const STORAGE_KEYS = {
   CURRENT_TASK: 'pomodoro_current_task'
 };
 
+const isExtension = typeof chrome !== 'undefined' && chrome.storage;
+
+// Sync chrome.storage to localStorage on load
+if (isExtension) {
+  chrome.storage.local.get([STORAGE_KEYS.TASKS, STORAGE_KEYS.HISTORY, STORAGE_KEYS.SETTINGS, STORAGE_KEYS.CURRENT_TASK], (result: { [key: string]: string }) => {
+    Object.keys(result).forEach(key => {
+      if (result[key]) {
+        localStorage.setItem(key, result[key]);
+      }
+    });
+  });
+}
+
 export const storage = {
   getTasks: (): Task[] => {
     const data = localStorage.getItem(STORAGE_KEYS.TASKS);
@@ -14,7 +27,11 @@ export const storage = {
   },
 
   saveTasks: (tasks: Task[]) => {
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    const data = JSON.stringify(tasks);
+    localStorage.setItem(STORAGE_KEYS.TASKS, data);
+    if (isExtension) {
+      chrome.storage.local.set({ [STORAGE_KEYS.TASKS]: data });
+    }
   },
 
   getHistory: (): HistoryEntry[] => {
@@ -23,7 +40,11 @@ export const storage = {
   },
 
   saveHistory: (history: HistoryEntry[]) => {
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+    const data = JSON.stringify(history);
+    localStorage.setItem(STORAGE_KEYS.HISTORY, data);
+    if (isExtension) {
+      chrome.storage.local.set({ [STORAGE_KEYS.HISTORY]: data });
+    }
   },
 
   addHistoryEntry: (entry: HistoryEntry) => {
@@ -46,7 +67,11 @@ export const storage = {
   },
 
   saveSettings: (settings: Settings) => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    const data = JSON.stringify(settings);
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, data);
+    if (isExtension) {
+      chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: data });
+    }
   },
 
   getCurrentTask: (): string | null => {
@@ -56,8 +81,14 @@ export const storage = {
   setCurrentTask: (taskId: string | null) => {
     if (taskId) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_TASK, taskId);
+      if (isExtension) {
+        chrome.storage.local.set({ [STORAGE_KEYS.CURRENT_TASK]: taskId });
+      }
     } else {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_TASK);
+      if (isExtension) {
+        chrome.storage.local.remove(STORAGE_KEYS.CURRENT_TASK);
+      }
     }
   }
 };

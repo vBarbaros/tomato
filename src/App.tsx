@@ -38,6 +38,26 @@ function App() {
           chrome.storage.local.remove('targetView');
         }
       });
+      
+      // Listen for storage changes to update history
+      const handleStorageChange = (changes: { [key: string]: { oldValue?: string; newValue?: string } }, areaName: string) => {
+        if (areaName === 'local') {
+          if (changes.pomodoro_history && changes.pomodoro_history.newValue) {
+            localStorage.setItem('pomodoro_history', changes.pomodoro_history.newValue);
+            setHistory(JSON.parse(changes.pomodoro_history.newValue));
+          }
+          if (changes.pomodoro_tasks && changes.pomodoro_tasks.newValue) {
+            localStorage.setItem('pomodoro_tasks', changes.pomodoro_tasks.newValue);
+            setTasks(JSON.parse(changes.pomodoro_tasks.newValue));
+          }
+        }
+      };
+      
+      chrome.storage.onChanged.addListener(handleStorageChange);
+      
+      return () => {
+        chrome.storage.onChanged.removeListener(handleStorageChange);
+      };
     }
   }, []);
 

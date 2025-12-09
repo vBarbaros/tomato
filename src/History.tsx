@@ -84,51 +84,55 @@ export default function History({ history, tasks }: Props) {
       }
     });
 
-    const weeks: { date: Date; count: number }[][] = [];
+    const weeks: ({ date: Date; count: number } | null)[][] = [];
     const monthLabels: { month: string; weekIndex: number }[] = [];
-    let currentWeek: { date: Date; count: number }[] = [];
+    let currentWeek: ({ date: Date; count: number } | null)[] = [];
     let lastMonth = -1;
     
-    const start = new Date(startDate);
-    start.setDate(start.getDate() - start.getDay());
+    const startDay = startDate.getDay();
     
-    const totalDays = Math.ceil((endDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 7;
+    // Add null cells for days before the start date in the first week
+    for (let i = 0; i < startDay; i++) {
+      currentWeek.push(null);
+    }
     
-    for (let i = 0; i < totalDays; i++) {
-      const date = new Date(start);
-      date.setDate(date.getDate() + i);
-      
-      const dateKey = date.toISOString().split('T')[0];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      const dateKey = current.toISOString().split('T')[0];
       const count = dayMap[dateKey] || 0;
       
-      currentWeek.push({ date, count });
+      currentWeek.push({ date: new Date(current), count });
       
       if (currentWeek.length === 7) {
-        const weekMonth = currentWeek[0].date.getMonth();
-        if (weekMonth !== lastMonth && weeks.length > 0) {
-          monthLabels.push({
-            month: currentWeek[0].date.toLocaleDateString('en-US', { month: 'short' }),
-            weekIndex: weeks.length
-          });
-          lastMonth = weekMonth;
-        } else if (weeks.length === 0) {
-          monthLabels.push({
-            month: currentWeek[0].date.toLocaleDateString('en-US', { month: 'short' }),
-            weekIndex: 0
-          });
-          lastMonth = weekMonth;
+        const firstRealDay = currentWeek.find(d => d !== null);
+        if (firstRealDay) {
+          const weekMonth = firstRealDay.date.getMonth();
+          if (weekMonth !== lastMonth && weeks.length > 0) {
+            monthLabels.push({
+              month: firstRealDay.date.toLocaleDateString('en-US', { month: 'short' }),
+              weekIndex: weeks.length
+            });
+            lastMonth = weekMonth;
+          } else if (weeks.length === 0) {
+            monthLabels.push({
+              month: firstRealDay.date.toLocaleDateString('en-US', { month: 'short' }),
+              weekIndex: 0
+            });
+            lastMonth = weekMonth;
+          }
         }
         weeks.push(currentWeek);
         currentWeek = [];
       }
+      
+      current.setDate(current.getDate() + 1);
     }
     
+    // Add remaining days in the last partial week
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
-        const lastDate = currentWeek[currentWeek.length - 1].date;
-        const nextDate = new Date(lastDate);
-        nextDate.setDate(nextDate.getDate() + 1);
-        currentWeek.push({ date: nextDate, count: 0 });
+        currentWeek.push(null);
       }
       weeks.push(currentWeek);
     }
@@ -216,12 +220,16 @@ export default function History({ history, tasks }: Props) {
             {heatmapData.map((week, weekIdx) => (
               <div key={weekIdx} className="heatmap-week">
                 {week.map((day, dayIdx) => (
-                  <div
-                    key={dayIdx}
-                    className="heatmap-day"
-                    style={{ backgroundColor: getIntensityColor(day.count) }}
-                    title={`${day.date.toLocaleDateString()}: ${day.count} sessions`}
-                  />
+                  day !== null ? (
+                    <div
+                      key={dayIdx}
+                      className="heatmap-day"
+                      style={{ backgroundColor: getIntensityColor(day.count) }}
+                      title={`${day.date.toLocaleDateString()}: ${day.count} sessions`}
+                    />
+                  ) : (
+                    <div key={dayIdx} className="heatmap-day-empty" />
+                  )
                 ))}
               </div>
             ))}

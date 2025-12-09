@@ -676,6 +676,12 @@
   outline-offset: 1px;
 }
 
+.heatmap-day-empty {
+  width: 10px;
+  height: 10px;
+  visibility: hidden;
+}
+
 .heatmap-legend {
   display: flex;
   align-items: center;
