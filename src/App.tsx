@@ -29,6 +29,16 @@ function App() {
   // Detect if running as extension
   useEffect(() => {
     isExtension.current = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id;
+    
+    // Check if opened from context menu with target view
+    if (isExtension.current) {
+      chrome.storage.local.get(['targetView'], (result: { targetView?: string }) => {
+        if (result.targetView) {
+          setView(result.targetView as View);
+          chrome.storage.local.remove('targetView');
+        }
+      });
+    }
   }, []);
 
   // Sync with background service worker if running as extension

@@ -55,12 +55,12 @@ function tick() {
     timerState.timeLeft--;
     updateBadge();
     saveState();
-    
+
     // Play tick sound if enabled
     if (timerState.settings.tickSoundEnabled) {
       playSound('tick');
     }
-    
+
     if (timerState.timeLeft === 0) {
       handleTimerComplete();
     }
@@ -84,8 +84,8 @@ async function playSound(soundType) {
     }
 
     // Send message to play sound
-    chrome.runtime.sendMessage({ 
-      action: 'playSound', 
+    chrome.runtime.sendMessage({
+      action: 'playSound',
       soundType: soundType
     });
   } catch (error) {
@@ -95,12 +95,12 @@ async function playSound(soundType) {
 
 function handleTimerComplete() {
   timerState.isRunning = false;
-  
+
   // Play sound if enabled
   if (timerState.settings.soundEnabled) {
     playSound(timerState.mode === 'work' ? 'workComplete' : 'breakComplete');
   }
-  
+
   // Show notification
   chrome.notifications.create('pomodoro-complete', {
     type: 'basic',
@@ -111,7 +111,7 @@ function handleTimerComplete() {
     requireInteraction: true,
     silent: true
   });
-  
+
   if (timerState.mode === 'work') {
     timerState.sessions++;
     if (timerState.sessions % 4 === 0) {
@@ -125,7 +125,7 @@ function handleTimerComplete() {
     timerState.mode = 'work';
     timerState.timeLeft = timerState.settings.workDuration * 60;
   }
-  
+
   updateBadge();
   saveState();
 }
@@ -204,18 +204,108 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Initialize badge on startup
 updateBadge();
 
+// Create context menu
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: 'open-app',
+    title: 'Tomato Timer: Focus on Your Life',
+    contexts: ['action', 'page', 'selection', 'link', 'image', 'video', 'audio']
+  });
+
+  chrome.contextMenus.create({
+    id: 'separator-1',
+    type: 'separator',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'resume',
+    title: 'Resume',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'start',
+    title: 'Start',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'stop',
+    title: 'Stop',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'reset',
+    title: 'Reset Tomato Timer',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'separator-2',
+    type: 'separator',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'tasks',
+    title: 'Tomato Timer Tasks',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'history',
+    title: 'History',
+    contexts: ['action']
+  });
+
+  chrome.contextMenus.create({
+    id: 'settings',
+    title: 'Settings',
+    contexts: ['action']
+  });
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info) => {
+  switch (info.menuItemId) {
+    case 'open-app':
+      chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
+      break;
+    case 'resume':
+    case 'start':
+      startTimer();
+      break;
+    case 'stop':
+      pauseTimer();
+      break;
+    case 'reset':
+      resetTimer();
+      break;
+    case 'tasks':
+    case 'history':
+    case 'settings':
+      // Open popup and navigate to the view
+      chrome.storage.local.set({ targetView: info.menuItemId }, () => {
+        chrome.action.openPopup();
+      });
+      break;
+  }
+});
+
 // Handle extension icon clicks
 let clickTimeout = null;
 let clickCount = 0;
 
 chrome.action.onClicked.addListener(() => {
   clickCount++;
-  
+
   // Clear existing timeout
   if (clickTimeout) {
     clearTimeout(clickTimeout);
   }
-  
+
   // Wait for potential multiple clicks
   clickTimeout = setTimeout(() => {
     if (clickCount === 1) {

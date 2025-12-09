@@ -102,6 +102,10 @@ export default function Settings({ settings, onSave }: Props) {
           </label>
         </div>
       </div>
+
+      <div className="disclaimer">
+        Pomodoro® and The Pomodoro Technique® are trademarks of Francesco Cirillo. Tomato Timer is not affiliated or associated with or endorsed by Pomodoro®, The Pomodoro Technique® or Francesco Cirillo.
+      </div>
     </div>
   );
 }
