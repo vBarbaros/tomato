@@ -120,7 +120,7 @@ function App() {
       const entry: HistoryEntry = {
         id: Date.now().toString(),
         taskId: currentTaskId || 'none',
-        taskName: task?.name || 'No Task',
+        taskName: task?.name || 'Generic',
         mode,
         duration,
         completedAt: Date.now()
@@ -327,7 +327,7 @@ function App() {
               value={currentTaskId || ''} 
               onChange={(e) => handleSelectTask(e.target.value || null)}
             >
-              <option value="">No Task</option>
+              <option value="">Generic</option>
               {tasks.map(task => (
                 <option key={task.id} value={task.id}>
                   {task.name}

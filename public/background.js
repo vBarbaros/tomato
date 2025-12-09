@@ -129,7 +129,7 @@ function handleTimerComplete() {
       const entry = {
         id: Date.now().toString(),
         taskId: currentTaskId || 'none',
-        taskName: task?.name || 'No Task',
+        taskName: task?.name || 'Generic',
         mode: 'work',
         duration: timerState.settings.workDuration * 60,
         completedAt: Date.now()

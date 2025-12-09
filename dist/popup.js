@@ -25,7 +25,7 @@ function loadTasks() {
   currentTaskId = storedTaskId;
   
   const select = document.getElementById('taskSelect');
-  select.innerHTML = '<option value="">No Task</option>';
+  select.innerHTML = '<option value="">Generic</option>';
   
   tasks.forEach(task => {
     const option = document.createElement('option');

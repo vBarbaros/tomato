@@ -97,7 +97,7 @@ export default function Tasks({ tasks, currentTaskId, onAddTask, onDeleteTask, o
           onClick={() => onSelectTask(null)}
         >
           <div className="task-color" style={{ backgroundColor: '#fff', border: '2px solid #ddd' }} />
-          <span>No Task</span>
+          <span>Generic</span>
         </div>
         {tasks.map(task => (
           <div 

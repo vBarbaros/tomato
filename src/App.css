@@ -806,3 +806,221 @@
   text-align: center;
   border-top: 1px solid #eee;
 }
+
+.day-of-week-chart {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.day-of-week-chart h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.day-bars {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 200px;
+  gap: 1rem;
+}
+
+.day-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.day-bar-wrapper {
+  width: 100%;
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.day-bar {
+  width: 100%;
+  max-width: 60px;
+  background: linear-gradient(to top, #d95550, #ff6b6b);
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-height: 4px;
+}
+
+.day-bar:hover {
+  background: linear-gradient(to top, #c44440, #ff5555);
+  transform: translateY(-2px);
+}
+
+.day-label-bottom {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.day-count {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.hour-of-day-chart {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.hour-of-day-chart h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.hour-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hour-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hour-label {
+  min-width: 140px;
+  text-align: right;
+}
+
+.hour-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.hour-range {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.hour-bar-container {
+  flex: 1;
+  height: 32px;
+  background: #f7fafc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hour-bar {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-width: 32px;
+}
+
+.hour-bar:hover {
+  opacity: 0.8;
+  transform: scaleX(1.02);
+  transform-origin: left;
+}
+
+.hour-count {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.task-distribution-chart {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.task-distribution-chart h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.task-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.task-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.task-bar-label {
+  min-width: 180px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.task-bar-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.task-bar-stats {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.task-bar-container {
+  flex: 1;
+  height: 32px;
+  background: #f7fafc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.task-bar {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-width: 32px;
+}
+
+.task-bar:hover {
+  opacity: 0.8;
+  transform: scaleX(1.02);
+  transform-origin: left;
+}
+
+.task-bar-hours {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
