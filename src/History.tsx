@@ -1,16 +1,462 @@
 import { useState } from 'react';
-import type { HistoryEntry, Task } from './types';
+import type { HistoryEntry, Task, Settings } from './types';
+import { storage } from './storage';
 
 type Props = {
   history: HistoryEntry[];
   tasks: Task[];
+  settings: Settings;
 };
 
 type TimePeriod = 'day' | 'week' | 'month' | 'quarter' | 'half' | 'year' | string; // string for year values like '2025'
 
-export default function History({ history }: Props) {
+// Helper function to get start of day timestamp
+const getStartOfDay = (timestamp: number) => {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+// Helper function to calculate current streak
+const calculateCurrentStreak = (history: HistoryEntry[]) => {
+  if (history.length === 0) return 0;
+
+  const workSessions = history.filter(entry => entry.mode === 'work');
+  if (workSessions.length === 0) return 0;
+
+  // Group sessions by day
+  const sessionsByDay = new Map<number, number>();
+  workSessions.forEach(entry => {
+    const dayStart = getStartOfDay(entry.completedAt);
+    sessionsByDay.set(dayStart, (sessionsByDay.get(dayStart) || 0) + 1);
+  });
+
+  const today = getStartOfDay(Date.now());
+  const yesterday = today - 24 * 60 * 60 * 1000;
+
+  // Check if there's a session today or yesterday (streak can continue from yesterday)
+  if (!sessionsByDay.has(today) && !sessionsByDay.has(yesterday)) {
+    return 0;
+  }
+
+  let streak = 0;
+  let currentDay = sessionsByDay.has(today) ? today : yesterday;
+
+  // Count consecutive days backwards
+  while (sessionsByDay.has(currentDay)) {
+    streak++;
+    currentDay -= 24 * 60 * 60 * 1000;
+  }
+
+  return streak;
+};
+
+// Helper function to calculate longest streak
+const calculateLongestStreak = (history: HistoryEntry[]) => {
+  if (history.length === 0) return 0;
+
+  const workSessions = history.filter(entry => entry.mode === 'work');
+  if (workSessions.length === 0) return 0;
+
+  // Group sessions by day
+  const sessionsByDay = new Map<number, number>();
+  workSessions.forEach(entry => {
+    const dayStart = getStartOfDay(entry.completedAt);
+    sessionsByDay.set(dayStart, (sessionsByDay.get(dayStart) || 0) + 1);
+  });
+
+  const sortedDays = Array.from(sessionsByDay.keys()).sort((a, b) => a - b);
+  
+  let maxStreak = 0;
+  let currentStreak = 0;
+  let expectedDay = sortedDays[0];
+
+  for (const day of sortedDays) {
+    if (day === expectedDay) {
+      currentStreak++;
+      maxStreak = Math.max(maxStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+    expectedDay = day + 24 * 60 * 60 * 1000;
+  }
+
+  return maxStreak;
+};
+
+// Helper function to get weekly comparison data
+const getWeeklyComparison = (history: HistoryEntry[]) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  // Get start of current week (Monday)
+  const currentWeekStart = new Date(today);
+  const dayOfWeek = currentWeekStart.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  currentWeekStart.setDate(currentWeekStart.getDate() - daysToMonday);
+  
+  // Get start of previous week
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
+  
+  const previousWeekEnd = new Date(previousWeekStart);
+  previousWeekEnd.setDate(previousWeekEnd.getDate() + 7);
+  
+  // Filter sessions for each week
+  const currentWeekSessions = history.filter(entry => {
+    const entryDate = new Date(entry.completedAt);
+    return entryDate >= currentWeekStart && entryDate < currentWeekEnd && entry.mode === 'work';
+  });
+  
+  const previousWeekSessions = history.filter(entry => {
+    const entryDate = new Date(entry.completedAt);
+    return entryDate >= previousWeekStart && entryDate < previousWeekEnd && entry.mode === 'work';
+  });
+  
+  const currentSessions = currentWeekSessions.length;
+  const currentHours = Math.round(currentWeekSessions.reduce((sum, entry) => sum + entry.duration, 0) / 3600 * 10) / 10;
+  
+  const previousSessions = previousWeekSessions.length;
+  const previousHours = Math.round(previousWeekSessions.reduce((sum, entry) => sum + entry.duration, 0) / 3600 * 10) / 10;
+  
+  const sessionChange = previousSessions === 0 ? (currentSessions > 0 ? 100 : 0) : 
+    Math.round(((currentSessions - previousSessions) / previousSessions) * 100);
+  
+  const hourChange = previousHours === 0 ? (currentHours > 0 ? 100 : 0) : 
+    Math.round(((currentHours - previousHours) / previousHours) * 100);
+  
+  return {
+    current: { sessions: currentSessions, hours: currentHours },
+    previous: { sessions: previousSessions, hours: previousHours },
+    sessionChange,
+    hourChange
+  };
+};
+
+// Helper function to get goal progress
+const getGoalProgress = (history: HistoryEntry[], settings: any) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  // Daily progress
+  const todayStart = new Date(today);
+  const todayEnd = new Date(today);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  
+  const todaySessions = history.filter(entry => {
+    const entryDate = new Date(entry.completedAt);
+    return entryDate >= todayStart && entryDate < todayEnd && entry.mode === 'work';
+  }).length;
+  
+  // Weekly progress (Monday to Sunday)
+  const weekStart = new Date(today);
+  const dayOfWeek = weekStart.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  weekStart.setDate(weekStart.getDate() - daysToMonday);
+  
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  
+  const weekSessions = history.filter(entry => {
+    const entryDate = new Date(entry.completedAt);
+    return entryDate >= weekStart && entryDate < weekEnd && entry.mode === 'work';
+  }).length;
+  
+  // Monthly progress
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  
+  const monthSessions = history.filter(entry => {
+    const entryDate = new Date(entry.completedAt);
+    return entryDate >= monthStart && entryDate < monthEnd && entry.mode === 'work';
+  }).length;
+  
+  return {
+    daily: {
+      current: todaySessions,
+      goal: settings.dailyGoal || 4,
+      percentage: Math.round((todaySessions / (settings.dailyGoal || 4)) * 100)
+    },
+    weekly: {
+      current: weekSessions,
+      goal: settings.weeklyGoal || 20,
+      percentage: Math.round((weekSessions / (settings.weeklyGoal || 20)) * 100)
+    },
+    monthly: {
+      current: monthSessions,
+      goal: settings.monthlyGoal || 80,
+      percentage: Math.round((monthSessions / (settings.monthlyGoal || 80)) * 100)
+    }
+  };
+};
+
+// Helper function to export history to CSV
+const exportToCSV = (history: HistoryEntry[], tasks: Task[]): void => {
+  const taskMap = new Map(tasks.map(t => [t.id, t]));
+  
+  const csvContent = [
+    'id,taskId,taskName,taskColor,mode,duration,completedAt',
+    ...history.map(entry => {
+      const task = taskMap.get(entry.taskId);
+      return [
+        entry.id,
+        entry.taskId || 'none',
+        `"${entry.taskName.replace(/"/g, '""')}"`, // Escape quotes
+        task?.color || '#c44540',
+        entry.mode,
+        entry.duration,
+        entry.completedAt
+      ].join(',');
+    })
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `tomato-history-${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// CSV Import Security Functions
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_ENTRIES = 10000;
+
+const validateFile = (file: File): boolean => {
+  const allowedTypes = ['text/csv', 'application/csv', 'text/plain'];
+  const allowedExtensions = ['.csv'];
+  return allowedTypes.includes(file.type) && 
+         allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)) &&
+         file.size <= MAX_FILE_SIZE;
+};
+
+const validateCSVFormat = (csvText: string): boolean => {
+  const lines = csvText.split('\n').filter(line => line.trim());
+  if (lines.length < 2) return false;
+  
+  const expectedHeader = 'id,taskId,taskName,taskColor,mode,duration,completedAt';
+  if (lines[0].trim() !== expectedHeader) return false;
+  
+  for (const line of lines) {
+    if (line.trim() && ((line.match(/,/g) || []).length !== 6 || 
+        line.includes(';') || line.includes('\t') || line.includes('|'))) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const sanitizeCell = (cell: string): string => {
+  if (!cell) return '';
+  if (cell.startsWith('=') || cell.startsWith('+') || 
+      cell.startsWith('-') || cell.startsWith('@')) {
+    return `'${cell}`;
+  }
+  return cell.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+             .replace(/[<>]/g, '').trim().substring(0, 200);
+};
+
+const sanitizeColor = (color: string): string => {
+  const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+  return hexPattern.test(color) ? color : '#c44540';
+};
+
+const parseCSVLine = (line: string): any => {
+  const result: any = {};
+  const headers = ['id', 'taskId', 'taskName', 'taskColor', 'mode', 'duration', 'completedAt'];
+  const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+  
+  headers.forEach((header, index) => {
+    if (values[index]) {
+      result[header] = values[index].replace(/^"|"$/g, '');
+    }
+  });
+  return result;
+};
+
+const validateRow = (row: any): any => {
+  try {
+    if (!row.id || !row.taskName || !row.mode) return null;
+    
+    const duration = parseInt(row.duration);
+    const completedAt = parseInt(row.completedAt);
+    
+    if (isNaN(duration) || isNaN(completedAt) || duration < 0 || duration > 7200) return null;
+    if (!['work', 'break', 'longBreak'].includes(row.mode)) return null;
+    
+    const now = Date.now();
+    const twoYearsAgo = now - (2 * 365 * 24 * 60 * 60 * 1000);
+    const oneDayFuture = now + (24 * 60 * 60 * 1000);
+    if (completedAt < twoYearsAgo || completedAt > oneDayFuture) return null;
+    
+    return {
+      id: sanitizeCell(row.id.toString()),
+      taskId: sanitizeCell(row.taskId?.toString()) || 'none',
+      taskName: sanitizeCell(row.taskName.toString()),
+      taskColor: sanitizeColor(row.taskColor?.toString()),
+      mode: row.mode,
+      duration,
+      completedAt
+    };
+  } catch {
+    return null;
+  }
+};
+
+let lastImportTime = 0;
+const checkRateLimit = (): boolean => {
+  const now = Date.now();
+  if (now - lastImportTime < 5000) return false;
+  lastImportTime = now;
+  return true;
+};
+
+export default function History({ history, tasks, settings }: Props) {
   const currentYear = new Date().getFullYear();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('year');
+
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const startTime = Date.now();
+    const TIMEOUT_MS = 30000; // 30 second timeout
+
+    try {
+      if (!checkRateLimit()) {
+        alert('Please wait before importing again');
+        return;
+      }
+
+      if (!validateFile(file)) {
+        console.warn('Import failed: Invalid file format', { fileName: file.name, fileSize: file.size, fileType: file.type });
+        alert('Invalid file format. Please upload a CSV file under 5MB.');
+        return;
+      }
+
+      const text = await file.text();
+      if (!validateCSVFormat(text)) {
+        console.warn('Import failed: Invalid CSV format', { fileName: file.name });
+        alert('Invalid CSV format. Please ensure the file uses comma separators and has the correct header.');
+        return;
+      }
+
+      const lines = text.split('\n').filter(line => line.trim());
+      const validEntries: any[] = [];
+      const taskMap = new Map(tasks.map(t => [t.id, t]));
+      const newTasks: Task[] = [];
+      let processedCount = 0;
+
+      console.info('Starting CSV import', { fileName: file.name, totalLines: lines.length - 1 });
+
+      // Process entries in chunks with timeout check
+      for (let i = 1; i < lines.length && validEntries.length < MAX_ENTRIES; i++) {
+        // Check timeout
+        if (Date.now() - startTime > TIMEOUT_MS) {
+          console.error('Import timeout exceeded', { processedCount, fileName: file.name });
+          alert('Import timeout. File too large or complex to process.');
+          return;
+        }
+
+        const row = parseCSVLine(lines[i]);
+        const validRow = validateRow(row);
+        if (validRow) {
+          // Generate unique ID for imported entry
+          validRow.id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Create task if it doesn't exist
+          if (validRow.taskId !== 'none' && !taskMap.has(validRow.taskId)) {
+            const newTask: Task = {
+              id: validRow.taskId,
+              name: validRow.taskName,
+              color: validRow.taskColor,
+              createdAt: Date.now()
+            };
+            taskMap.set(validRow.taskId, newTask);
+            newTasks.push(newTask);
+          }
+          validEntries.push(validRow);
+        }
+        processedCount++;
+
+        // Yield control every 100 entries
+        if (i % 100 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      // Remove duplicates using composite key (taskId + completedAt + duration)
+      const existingKeys = new Set(
+        history.map(e => `${e.taskId}-${e.completedAt}-${e.duration}-${e.mode}`)
+      );
+      const newEntries = validEntries.filter(entry => 
+        !existingKeys.has(`${entry.taskId}-${entry.completedAt}-${entry.duration}-${entry.mode}`)
+      );
+
+      console.info('Import processing complete', { 
+        processedCount, 
+        validEntries: validEntries.length, 
+        newEntries: newEntries.length, 
+        newTasks: newTasks.length,
+        fileName: file.name 
+      });
+
+      if (newEntries.length === 0 && newTasks.length === 0) {
+        alert('No new entries found (all entries already exist)');
+        return;
+      }
+
+      if (newEntries.length > 100) {
+        const confirmed = window.confirm(
+          `Import ${newEntries.length} entries and ${newTasks.length} new tasks? This action cannot be undone.`
+        );
+        if (!confirmed) {
+          console.info('Import cancelled by user', { fileName: file.name });
+          return;
+        }
+      }
+
+      // Atomic operation: prepare all data first, then save together
+      const updatedTasks = newTasks.length > 0 ? [...tasks, ...newTasks] : tasks;
+      const updatedHistory = newEntries.length > 0 ? [...history, ...newEntries] : history;
+
+      // Save atomically
+      try {
+        if (newTasks.length > 0) {
+          storage.saveTasks(updatedTasks);
+        }
+        if (newEntries.length > 0) {
+          storage.saveHistory(updatedHistory);
+        }
+        
+        console.info('Import completed successfully', { 
+          importedEntries: newEntries.length, 
+          createdTasks: newTasks.length,
+          fileName: file.name 
+        });
+        
+        alert(`Successfully imported ${newEntries.length} entries and created ${newTasks.length} new tasks`);
+        window.location.reload(); // Refresh to show new data
+        
+      } catch (saveError) {
+        console.error('Import failed during save operation', { error: saveError, fileName: file.name });
+        alert('Import failed during save operation');
+      }
+
+    } catch (error) {
+      console.error('Import failed with unexpected error', { 
+        error: error instanceof Error ? error.message : 'Unknown error', 
+        fileName: file.name,
+        processingTime: Date.now() - startTime 
+      });
+      alert('Import failed due to an unexpected error');
+    } finally {
+      event.target.value = ''; // Reset file input
+    }
+  };
 
   const getDateRange = () => {
     const today = new Date();
@@ -234,8 +680,130 @@ export default function History({ history }: Props) {
   const totalTime = history.reduce((sum, h) => h.mode === 'work' ? sum + h.duration : sum, 0);
   const { weeks: heatmapData, monthLabels } = getHeatmapData();
 
+  const currentStreak = calculateCurrentStreak(history);
+  const longestStreak = calculateLongestStreak(history);
+  const today = getStartOfDay(Date.now());
+  const hasSessionToday = history.some(entry => 
+    entry.mode === 'work' && getStartOfDay(entry.completedAt) === today
+  );
+
   return (
     <div className="view">
+      {/* Streak Tracking */}
+      <div className="streak-section">
+        <div className="streak-cards">
+          <div className="streak-card">
+            <div className="streak-icon">{hasSessionToday ? '🔥' : '⚠️'}</div>
+            <div className="streak-value">{currentStreak}</div>
+            <div className="streak-label">Current Streak</div>
+          </div>
+          <div className="streak-card">
+            <div className="streak-icon">🏆</div>
+            <div className="streak-value">{longestStreak}</div>
+            <div className="streak-label">Longest Streak</div>
+          </div>
+          <div className="streak-card">
+            <div className="streak-icon">📅</div>
+            <div className="streak-value">
+              {currentStreak > 0 ? `${currentStreak} days` : 'Start today!'}
+            </div>
+            <div className="streak-label">
+              {currentStreak > 0 ? 'Keep it up!' : 'Begin your streak'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Goal Progress */}
+      <div className="goal-progress">
+        <div className="section-header">
+          <h3>Goal Progress</h3>
+          <div className="import-export-controls">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              style={{ display: 'none' }}
+              id="csv-import"
+            />
+            <label htmlFor="csv-import" className="import-btn">
+              📤 Import CSV
+            </label>
+            <button 
+              className="export-btn" 
+              onClick={() => exportToCSV(history, tasks)}
+              title="Export all history to CSV"
+            >
+              📥 Export CSV
+            </button>
+          </div>
+        </div>
+        {(() => {
+          const goalData = getGoalProgress(history, settings);
+          
+          return (
+            <div className="goal-cards">
+              <div className="goal-card">
+                <div className="goal-header">Daily Goal</div>
+                <div className="goal-progress-bar">
+                  <div 
+                    className="goal-progress-fill" 
+                    style={{ 
+                      width: `${Math.min(100, goalData.daily.percentage)}%`,
+                      backgroundColor: goalData.daily.percentage >= 100 ? '#28a745' : '#c44540'
+                    }}
+                  />
+                </div>
+                <div className="goal-stats">
+                  <span className="goal-current">{goalData.daily.current}</span>
+                  <span className="goal-separator">/</span>
+                  <span className="goal-target">{goalData.daily.goal}</span>
+                  <span className="goal-percentage">({goalData.daily.percentage}%)</span>
+                </div>
+              </div>
+              
+              <div className="goal-card">
+                <div className="goal-header">Weekly Goal</div>
+                <div className="goal-progress-bar">
+                  <div 
+                    className="goal-progress-fill" 
+                    style={{ 
+                      width: `${Math.min(100, goalData.weekly.percentage)}%`,
+                      backgroundColor: goalData.weekly.percentage >= 100 ? '#28a745' : '#c44540'
+                    }}
+                  />
+                </div>
+                <div className="goal-stats">
+                  <span className="goal-current">{goalData.weekly.current}</span>
+                  <span className="goal-separator">/</span>
+                  <span className="goal-target">{goalData.weekly.goal}</span>
+                  <span className="goal-percentage">({goalData.weekly.percentage}%)</span>
+                </div>
+              </div>
+              
+              <div className="goal-card">
+                <div className="goal-header">Monthly Goal</div>
+                <div className="goal-progress-bar">
+                  <div 
+                    className="goal-progress-fill" 
+                    style={{ 
+                      width: `${Math.min(100, goalData.monthly.percentage)}%`,
+                      backgroundColor: goalData.monthly.percentage >= 100 ? '#28a745' : '#c44540'
+                    }}
+                  />
+                </div>
+                <div className="goal-stats">
+                  <span className="goal-current">{goalData.monthly.current}</span>
+                  <span className="goal-separator">/</span>
+                  <span className="goal-target">{goalData.monthly.goal}</span>
+                  <span className="goal-percentage">({goalData.monthly.percentage}%)</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
       <div className="stats">
         <div className="stat-card">
           <div className="stat-value">{totalSessions}</div>
@@ -405,6 +973,134 @@ export default function History({ history }: Props) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Weekly Comparison */}
+      <div className="weekly-comparison">
+        <h3>Weekly Comparison</h3>
+        {(() => {
+          const weeklyData = getWeeklyComparison(history);
+          const getTrendIcon = (change: number) => {
+            if (change > 5) return '↑';
+            if (change < -5) return '↓';
+            return '→';
+          };
+          const getTrendColor = (change: number) => {
+            if (change > 5) return '#28a745';
+            if (change < -5) return '#dc3545';
+            return '#6c757d';
+          };
+
+          return (
+            <div className="weekly-cards">
+              <div className="weekly-card">
+                <div className="weekly-header">This Week</div>
+                <div className="weekly-stats">
+                  <div className="weekly-stat">
+                    <span className="weekly-value">{weeklyData.current.sessions}</span>
+                    <span className="weekly-label">sessions</span>
+                  </div>
+                  <div className="weekly-stat">
+                    <span className="weekly-value">{weeklyData.current.hours}h</span>
+                    <span className="weekly-label">hours</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="weekly-card">
+                <div className="weekly-header">Last Week</div>
+                <div className="weekly-stats">
+                  <div className="weekly-stat">
+                    <span className="weekly-value">{weeklyData.previous.sessions}</span>
+                    <span className="weekly-label">sessions</span>
+                  </div>
+                  <div className="weekly-stat">
+                    <span className="weekly-value">{weeklyData.previous.hours}h</span>
+                    <span className="weekly-label">hours</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="weekly-card trend-card">
+                <div className="weekly-header">Trend</div>
+                <div className="trend-stats">
+                  <div className="trend-item">
+                    <span className="trend-icon">{getTrendIcon(weeklyData.sessionChange)}</span>
+                    <span 
+                      className="trend-value" 
+                      style={{ color: getTrendColor(weeklyData.sessionChange) }}
+                    >
+                      {weeklyData.sessionChange > 0 ? '+' : ''}{weeklyData.sessionChange}%
+                    </span>
+                    <span className="trend-label">sessions</span>
+                  </div>
+                  <div className="trend-item">
+                    <span className="trend-icon">{getTrendIcon(weeklyData.hourChange)}</span>
+                    <span 
+                      className="trend-value" 
+                      style={{ color: getTrendColor(weeklyData.hourChange) }}
+                    >
+                      {weeklyData.hourChange > 0 ? '+' : ''}{weeklyData.hourChange}%
+                    </span>
+                    <span className="trend-label">hours</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Today's Recent Activity */}
+      <div className="recent-activity">
+        <h3>Today's Recent Activity</h3>
+        {(() => {
+          const today = new Date();
+          const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const endOfDay = new Date(startOfDay);
+          endOfDay.setDate(endOfDay.getDate() + 1);
+          
+          const todayEntries = history
+            .filter(entry => {
+              const entryDate = new Date(entry.completedAt);
+              return entryDate >= startOfDay && entryDate < endOfDay;
+            })
+            .sort((a, b) => b.completedAt - a.completedAt) // Descending order
+            .slice(0, 10); // Limit to 10 most recent
+          
+          if (todayEntries.length === 0) {
+            return <p className="no-activity">No sessions completed today yet. Start your first session!</p>;
+          }
+          
+          return (
+            <div className="activity-list">
+              {todayEntries.map(entry => {
+                const task = tasks.find(t => t.id === entry.taskId);
+                const time = new Date(entry.completedAt).toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+                const duration = Math.floor(entry.duration / 60);
+                
+                return (
+                  <div key={entry.id} className="activity-item">
+                    <div className="activity-time">{time}</div>
+                    <div 
+                      className="activity-task"
+                      style={{ borderLeft: `4px solid ${task?.color || '#c44540'}` }}
+                    >
+                      <div className="activity-task-name">{entry.taskName}</div>
+                      <div className="activity-details">
+                        {entry.mode === 'work' ? '💼' : entry.mode === 'longBreak' ? '☕' : '☕'} 
+                        {entry.mode} • {duration}m
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

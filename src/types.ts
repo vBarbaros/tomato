@@ -26,4 +26,7 @@ export type Settings = {
   tickSoundEnabled: boolean;
   openTabOnComplete: boolean;
   autoCloseTab: boolean;
+  dailyGoal: number;
+  weeklyGoal: number;
+  monthlyGoal: number;
 };

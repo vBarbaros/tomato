@@ -6,11 +6,12 @@ import { playSound } from './audio';
 import Tasks from './Tasks';
 import History from './History';
 import Settings from './Settings';
+import About from './About';
 import CyclePrompt from './CyclePrompt';
 import quotes from './assets/quotes.json';
 import './App.css';
 
-type View = 'timer' | 'tasks' | 'history' | 'settings' | 'cyclePrompt';
+type View = 'timer' | 'tasks' | 'history' | 'settings' | 'about' | 'cyclePrompt';
 
 function App() {
   const [view, setView] = useState<View>('timer');
@@ -372,6 +373,9 @@ function App() {
         <button onClick={() => setView('settings')} className={view === 'settings' ? 'active' : ''}>
           Settings
         </button>
+        <button onClick={() => setView('about')} className={view === 'about' ? 'active' : ''}>
+          About
+        </button>
       </nav>
 
       <div className="view-container">
@@ -436,11 +440,15 @@ function App() {
       )}
 
       {view === 'history' && (
-        <History history={history} tasks={tasks} />
+        <History history={history} tasks={tasks} settings={settings} />
       )}
 
       {view === 'settings' && (
         <Settings settings={settings} onSave={handleSaveSettings} />
+      )}
+
+      {view === 'about' && (
+        <About />
       )}
 
       {view === 'cyclePrompt' && (

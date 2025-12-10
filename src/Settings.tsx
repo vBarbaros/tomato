@@ -127,8 +127,44 @@ export default function Settings({ settings, onSave }: Props) {
         </div>
       </div>
 
-      <div className="disclaimer">
-        Pomodoro® and The Pomodoro Technique® are trademarks of Francesco Cirillo. Tomato Timer is not affiliated or associated with or endorsed by Pomodoro®, The Pomodoro Technique® or Francesco Cirillo.
+      <div className="settings-group">
+        <h3>Goals</h3>
+        
+        <div className="setting-item">
+          <label>Daily Session Goal</label>
+          <input
+            type="number"
+            min="1"
+            max="20"
+            value={settings.dailyGoal}
+            onChange={(e) => handleChange('dailyGoal', parseInt(e.target.value) || 4)}
+            placeholder="4"
+          />
+        </div>
+
+        <div className="setting-item">
+          <label>Weekly Session Goal</label>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            value={settings.weeklyGoal}
+            onChange={(e) => handleChange('weeklyGoal', parseInt(e.target.value) || 20)}
+            placeholder="20"
+          />
+        </div>
+
+        <div className="setting-item">
+          <label>Monthly Session Goal</label>
+          <input
+            type="number"
+            min="1"
+            max="500"
+            value={settings.monthlyGoal}
+            onChange={(e) => handleChange('monthlyGoal', parseInt(e.target.value) || 80)}
+            placeholder="80"
+          />
+        </div>
       </div>
     </div>
   );
