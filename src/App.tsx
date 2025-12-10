@@ -1,3 +1,4 @@
+/// <reference types="chrome" />
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TimerMode, Task, HistoryEntry, Settings as SettingsType } from './types';
 import { storage } from './storage';
@@ -5,10 +6,11 @@ import { playSound } from './audio';
 import Tasks from './Tasks';
 import History from './History';
 import Settings from './Settings';
+import CyclePrompt from './CyclePrompt';
 import quotes from './assets/quotes.json';
 import './App.css';
 
-type View = 'timer' | 'tasks' | 'history' | 'settings';
+type View = 'timer' | 'tasks' | 'history' | 'settings' | 'cyclePrompt';
 
 function App() {
   const [view, setView] = useState<View>('timer');
@@ -30,6 +32,12 @@ function App() {
   useEffect(() => {
     isExtension.current = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id;
     
+    // Check if this is a new tab opened for cycle completion
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('cycleComplete') === 'true') {
+      setView('cyclePrompt');
+    }
+    
     // Check if opened from context menu with target view
     if (isExtension.current) {
       chrome.storage.local.get(['targetView'], (result: { targetView?: string }) => {
@@ -40,15 +48,15 @@ function App() {
       });
       
       // Listen for storage changes to update history
-      const handleStorageChange = (changes: { [key: string]: { oldValue?: string; newValue?: string } }, areaName: string) => {
+      const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: chrome.storage.AreaName) => {
         if (areaName === 'local') {
           if (changes.pomodoro_history && changes.pomodoro_history.newValue) {
-            localStorage.setItem('pomodoro_history', changes.pomodoro_history.newValue);
-            setHistory(JSON.parse(changes.pomodoro_history.newValue));
+            localStorage.setItem('pomodoro_history', changes.pomodoro_history.newValue as string);
+            setHistory(JSON.parse(changes.pomodoro_history.newValue as string));
           }
           if (changes.pomodoro_tasks && changes.pomodoro_tasks.newValue) {
-            localStorage.setItem('pomodoro_tasks', changes.pomodoro_tasks.newValue);
-            setTasks(JSON.parse(changes.pomodoro_tasks.newValue));
+            localStorage.setItem('pomodoro_tasks', changes.pomodoro_tasks.newValue as string);
+            setTasks(JSON.parse(changes.pomodoro_tasks.newValue as string));
           }
         }
       };
@@ -98,6 +106,31 @@ function App() {
     const randomIndex = Math.floor(Math.random() * quotes.length);
     setCurrentQuote(quotes[randomIndex]);
   };
+
+  const handleTabManagement = useCallback(() => {
+    if (!isExtension.current || !settings.openTabOnComplete) return;
+    
+    // Don't open tab if auto-start is enabled
+    if ((mode === 'work' && settings.autoStartBreaks) || 
+        (mode !== 'work' && settings.autoStartWork)) {
+      return;
+    }
+
+    // Check if timer tab already exists
+    chrome.tabs.query({ url: chrome.runtime.getURL('index.html') }, (tabs: chrome.tabs.Tab[]) => {
+      if (tabs.length > 0) {
+        // Focus existing tab
+        chrome.tabs.update(tabs[0].id!, { active: true });
+        chrome.windows.update(tabs[0].windowId!, { focused: true });
+      } else {
+        // Create new tab with cycle completion flag
+        chrome.tabs.create({ 
+          url: chrome.runtime.getURL('index.html?cycleComplete=true'),
+          active: true 
+        });
+      }
+    });
+  }, [mode, settings, isExtension]);
 
   const handleTimerComplete = useCallback(() => {
     setIsRunning(false);
@@ -151,7 +184,10 @@ function App() {
         body: mode === 'work' ? 'Time for a break!' : 'Time to work!',
       });
     }
-  }, [mode, tasks, currentTaskId, sessions, settings]);
+
+    // Handle tab management for extensions
+    handleTabManagement();
+  }, [mode, tasks, currentTaskId, sessions, settings, handleTabManagement]);
 
   useEffect(() => {
     // Don't run local timer if we're syncing with background worker
@@ -270,6 +306,36 @@ function App() {
     }
   };
 
+  const handleStartCycle = (selectedMode: TimerMode) => {
+    setMode(selectedMode);
+    const durations = {
+      work: settings.workDuration * 60,
+      break: settings.breakDuration * 60,
+      longBreak: settings.longBreakDuration * 60
+    };
+    setTimeLeft(durations[selectedMode]);
+    setIsRunning(true);
+    setHasStarted(true);
+    if (isExtension.current) {
+      chrome.runtime.sendMessage({ action: 'switchMode', mode: selectedMode });
+      chrome.runtime.sendMessage({ action: 'start' });
+    }
+  };
+
+  const handleGoToTimer = () => {
+    // Check if we're in a cycle completion tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const isCycleCompleteTab = urlParams.get('cycleComplete') === 'true';
+    
+    if (isCycleCompleteTab && isExtension.current) {
+      // Remove the cycle complete parameter and navigate to timer
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+    
+    setView('timer');
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -375,6 +441,16 @@ function App() {
 
       {view === 'settings' && (
         <Settings settings={settings} onSave={handleSaveSettings} />
+      )}
+
+      {view === 'cyclePrompt' && (
+        <CyclePrompt 
+          onStartCycle={handleStartCycle}
+          onGoToTimer={handleGoToTimer}
+          settings={settings}
+          nextMode={mode}
+          sessions={sessions}
+        />
       )}
       </div>
     </div>

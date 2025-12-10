@@ -7,8 +7,12 @@ let timerState = {
     workDuration: 25,
     breakDuration: 5,
     longBreakDuration: 15,
+    autoStartBreaks: false,
+    autoStartWork: false,
     soundEnabled: true,
-    tickSoundEnabled: false
+    tickSoundEnabled: false,
+    openTabOnComplete: true,
+    autoCloseTab: false
   }
 };
 
@@ -93,6 +97,32 @@ async function playSound(soundType) {
   }
 }
 
+function handleTabManagement() {
+  if (!timerState.settings.openTabOnComplete) return;
+  
+  // Don't open tab if auto-start is enabled
+  if ((timerState.mode === 'break' && timerState.settings.autoStartBreaks) || 
+      (timerState.mode === 'longBreak' && timerState.settings.autoStartBreaks) ||
+      (timerState.mode === 'work' && timerState.settings.autoStartWork)) {
+    return;
+  }
+
+  // Check if timer tab already exists
+  chrome.tabs.query({ url: chrome.runtime.getURL('index.html') }, (tabs) => {
+    if (tabs.length > 0) {
+      // Focus existing tab
+      chrome.tabs.update(tabs[0].id, { active: true });
+      chrome.windows.update(tabs[0].windowId, { focused: true });
+    } else {
+      // Create new tab with cycle completion flag
+      chrome.tabs.create({ 
+        url: chrome.runtime.getURL('index.html?cycleComplete=true'),
+        active: true 
+      });
+    }
+  });
+}
+
 function handleTimerComplete() {
   timerState.isRunning = false;
   
@@ -149,26 +179,38 @@ function handleTimerComplete() {
     if (timerState.sessions % 4 === 0) {
       timerState.mode = 'longBreak';
       timerState.timeLeft = timerState.settings.longBreakDuration * 60;
+      if (timerState.settings.autoStartBreaks) {
+        timerState.isRunning = true;
+      }
     } else {
       timerState.mode = 'break';
       timerState.timeLeft = timerState.settings.breakDuration * 60;
+      if (timerState.settings.autoStartBreaks) {
+        timerState.isRunning = true;
+      }
     }
   } else {
     timerState.mode = 'work';
     timerState.timeLeft = timerState.settings.workDuration * 60;
+    if (timerState.settings.autoStartWork) {
+      timerState.isRunning = true;
+    }
   }
+
+  // Handle tab management
+  handleTabManagement();
 
   updateBadge();
   saveState();
 }
 
 function startTimer() {
+  timerState.isRunning = true;
+  updateBadge(); // Update badge immediately
+  saveState();
   if (!intervalId) {
     intervalId = setInterval(tick, 1000);
   }
-  timerState.isRunning = true;
-  updateBadge();
-  saveState();
 }
 
 function pauseTimer() {
@@ -179,6 +221,10 @@ function pauseTimer() {
 
 function resetTimer() {
   timerState.isRunning = false;
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
   const durations = {
     work: timerState.settings.workDuration * 60,
     break: timerState.settings.breakDuration * 60,
@@ -327,6 +373,7 @@ chrome.contextMenus.onClicked.addListener((info) => {
 });
 
 // Handle extension icon clicks
+// Delays: Single click: 250ms, Double click: 250ms, Triple click: 250ms
 let clickTimeout = null;
 let clickCount = 0;
 
@@ -341,17 +388,22 @@ chrome.action.onClicked.addListener(() => {
   // Wait for potential multiple clicks
   clickTimeout = setTimeout(() => {
     if (clickCount === 1) {
-      // Single click - toggle timer
+      // Single click - toggle timer (150ms delay)
       if (timerState.isRunning) {
         pauseTimer();
       } else {
+        // Provide immediate visual feedback before starting
+        chrome.action.setBadgeText({ text: '...' });
+        chrome.action.setBadgeBackgroundColor({ color: '#d95550' });
         startTimer();
       }
     } else if (clickCount === 2) {
-      // Double click - reset
+      // Double click - reset (150ms delay)
+      chrome.action.setBadgeText({ text: 'RST' });
+      chrome.action.setBadgeBackgroundColor({ color: '#6c757d' });
       resetTimer();
     } else if (clickCount >= 3) {
-      // Triple click - open popup
+      // Triple click - open popup (150ms delay)
       chrome.action.setPopup({ popup: 'popup.html' });
       chrome.action.openPopup().then(() => {
         // Reset popup setting after opening
@@ -361,5 +413,5 @@ chrome.action.onClicked.addListener(() => {
       });
     }
     clickCount = 0;
-  }, 250);
+  }, 250); // Increased back to 250ms for better multi-click detection
 });

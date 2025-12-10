@@ -62,7 +62,9 @@ export const storage = {
       autoStartBreaks: false,
       autoStartWork: false,
       soundEnabled: true,
-      tickSoundEnabled: false
+      tickSoundEnabled: false,
+      openTabOnComplete: true,
+      autoCloseTab: false
     };
   },
 

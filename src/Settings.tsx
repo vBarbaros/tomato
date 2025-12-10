@@ -101,6 +101,32 @@ export default function Settings({ settings, onSave }: Props) {
         </div>
       </div>
 
+      <div className="settings-group">
+        <h3>Tab Management</h3>
+        
+        <div className="setting-item">
+          <label>
+            <input
+              type="checkbox"
+              checked={settings.openTabOnComplete}
+              onChange={(e) => handleChange('openTabOnComplete', e.target.checked)}
+            />
+            Open new tab when cycle completes
+          </label>
+        </div>
+
+        <div className="setting-item">
+          <label>
+            <input
+              type="checkbox"
+              checked={settings.autoCloseTab}
+              onChange={(e) => handleChange('autoCloseTab', e.target.checked)}
+            />
+            Auto-close tab after starting new cycle
+          </label>
+        </div>
+      </div>
+
       <div className="disclaimer">
         Pomodoro® and The Pomodoro Technique® are trademarks of Francesco Cirillo. Tomato Timer is not affiliated or associated with or endorsed by Pomodoro®, The Pomodoro Technique® or Francesco Cirillo.
       </div>

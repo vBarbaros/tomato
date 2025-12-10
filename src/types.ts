@@ -24,4 +24,6 @@ export type Settings = {
   autoStartWork: boolean;
   soundEnabled: boolean;
   tickSoundEnabled: boolean;
+  openTabOnComplete: boolean;
+  autoCloseTab: boolean;
 };
