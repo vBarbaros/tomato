@@ -433,6 +433,7 @@ function App() {
         <Tasks
           tasks={tasks}
           currentTaskId={currentTaskId}
+          history={history}
           onAddTask={handleAddTask}
           onDeleteTask={handleDeleteTask}
           onSelectTask={handleSelectTask}

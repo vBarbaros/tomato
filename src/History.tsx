@@ -632,17 +632,29 @@ export default function History({ history, tasks, settings }: Props) {
     const { startDate, endDate } = getDateRange();
     const taskMap: Record<string, { name: string; duration: number }> = {};
 
+    // Initialize all existing tasks with zero duration
+    tasks.forEach(task => {
+      taskMap[task.id] = { name: task.name, duration: 0 };
+    });
+    
+    // Add generic task
+    taskMap['none'] = { name: 'Generic', duration: 0 };
+
+    // Calculate actual durations from history
     history.forEach(entry => {
       if (entry.mode === 'work') {
         const date = new Date(entry.completedAt);
         if (date >= startDate && date <= endDate) {
-          if (!taskMap[entry.taskId]) {
-            taskMap[entry.taskId] = {
+          const taskId = entry.taskId || 'none';
+          if (taskMap[taskId]) {
+            taskMap[taskId].duration += entry.duration;
+          } else {
+            // Handle tasks that might have been deleted
+            taskMap[taskId] = {
               name: entry.taskName,
-              duration: 0
+              duration: entry.duration
             };
           }
-          taskMap[entry.taskId].duration += entry.duration;
         }
       }
     });

@@ -12,24 +12,48 @@ let timerState = {
     soundEnabled: true,
     tickSoundEnabled: false,
     openTabOnComplete: true,
-    autoCloseTab: false
+    autoCloseTab: true
   }
 };
 
 let intervalId = null;
+let isInitialized = false;
 
-// Load state from storage on startup
-chrome.storage.local.get(['timerState'], (result) => {
-  if (result.timerState) {
-    timerState = result.timerState;
-  }
-  // Also load settings from localStorage if available
-  chrome.storage.local.get(['pomodoro_settings'], (settingsResult) => {
-    if (settingsResult.pomodoro_settings) {
-      timerState.settings = JSON.parse(settingsResult.pomodoro_settings);
+// Initialize state immediately on startup
+const initializeState = () => {
+  if (isInitialized) return;
+  
+  chrome.storage.local.get(['timerState', 'pomodoro_settings'], (result) => {
+    if (result.timerState) {
+      timerState = { ...timerState, ...result.timerState };
     }
+    if (result.pomodoro_settings) {
+      try {
+        timerState.settings = { ...timerState.settings, ...JSON.parse(result.pomodoro_settings) };
+      } catch (e) {
+        console.warn('Failed to parse settings:', e);
+      }
+    }
+    
+    // Ensure timer is not running on startup
+    timerState.isRunning = false;
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    
+    updateBadge();
+    saveState();
+    isInitialized = true;
   });
-});
+};
+
+// Initialize immediately
+initializeState();
+
+// Also initialize on extension startup
+chrome.runtime.onStartup.addListener(initializeState);
+chrome.runtime.onInstalled.addListener(initializeState);
 
 function saveState() {
   chrome.storage.local.set({ timerState });
@@ -250,6 +274,11 @@ function switchMode(mode) {
 
 // Listen for messages from popup/page
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Ensure state is initialized before handling messages
+  if (!isInitialized) {
+    initializeState();
+  }
+  
   switch (request.action) {
     case 'getState':
       sendResponse(timerState);

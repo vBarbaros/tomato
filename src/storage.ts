@@ -64,7 +64,7 @@ export const storage = {
       soundEnabled: true,
       tickSoundEnabled: false,
       openTabOnComplete: true,
-      autoCloseTab: false,
+      autoCloseTab: true,
       dailyGoal: 4,
       weeklyGoal: 20,
       monthlyGoal: 80
