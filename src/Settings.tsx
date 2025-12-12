@@ -80,23 +80,29 @@ export default function Settings({ settings, onSave }: Props) {
         
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.soundEnabled}
-              onChange={(e) => handleChange('soundEnabled', e.target.checked)}
-            />
             Enable completion sounds
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled}
+                onChange={(e) => handleChange('soundEnabled', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
 
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.tickSoundEnabled}
-              onChange={(e) => handleChange('tickSoundEnabled', e.target.checked)}
-            />
             Enable tick sound
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.tickSoundEnabled}
+                onChange={(e) => handleChange('tickSoundEnabled', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
       </div>

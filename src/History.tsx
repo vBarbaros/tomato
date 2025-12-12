@@ -464,18 +464,37 @@ export default function History({ history, tasks, settings }: Props) {
     
     if (timePeriod === 'day') {
       startDate.setHours(0, 0, 0, 0);
-      today.setHours(23, 59, 59, 999);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      return { startDate, endDate };
     } else if (timePeriod === 'week') {
       startDate.setDate(today.getDate() - 6);
       startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      return { startDate, endDate };
     } else if (timePeriod === 'month') {
       startDate.setMonth(today.getMonth() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      return { startDate, endDate };
     } else if (timePeriod === 'quarter') {
       startDate.setMonth(today.getMonth() - 3);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      return { startDate, endDate };
     } else if (timePeriod === 'half') {
       startDate.setMonth(today.getMonth() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      return { startDate, endDate };
     } else if (timePeriod === 'year') {
-      startDate.setFullYear(today.getFullYear() - 1);
+      startDate.setFullYear(today.getFullYear(), 0, 1); // January 1st of current year
+      const endDate = new Date(today.getFullYear(), 11, 31); // December 31st of current year
+      return { startDate, endDate };
     } else {
       // Specific year value
       const year = parseInt(timePeriod);
@@ -483,8 +502,6 @@ export default function History({ history, tasks, settings }: Props) {
       const endDate = new Date(year, 11, 31);
       return { startDate, endDate };
     }
-    
-    return { startDate, endDate: today };
   };
 
   const getHeatmapData = () => {
@@ -545,7 +562,7 @@ export default function History({ history, tasks, settings }: Props) {
       current.setDate(current.getDate() + 1);
     }
     
-    // Add remaining days in the last partial week
+    // Add final week if it has content, padding with nulls if needed
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
         currentWeek.push(null);

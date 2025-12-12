@@ -36,14 +36,15 @@ function App() {
     // Check if this is a new tab opened for cycle completion
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('cycleComplete') === 'true') {
-      setView('cyclePrompt');
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => setView('cyclePrompt'), 0);
     }
     
     // Check if opened from context menu with target view
     if (isExtension.current) {
       chrome.storage.local.get(['targetView'], (result: { targetView?: string }) => {
         if (result.targetView) {
-          setView(result.targetView as View);
+          setTimeout(() => setView(result.targetView as View), 0);
           chrome.storage.local.remove('targetView');
         }
       });
@@ -75,6 +76,7 @@ function App() {
     if (isExtension.current) {
       chrome.runtime.sendMessage({ action: 'getState' }, (response: { mode: TimerMode; timeLeft: number; isRunning: boolean; sessions: number; settings: SettingsType } | undefined) => {
         if (response) {
+          // Batch state updates to avoid cascading renders
           setMode(response.mode);
           setTimeLeft(response.timeLeft);
           setIsRunning(response.isRunning);
@@ -90,6 +92,7 @@ function App() {
       const syncInterval = setInterval(() => {
         chrome.runtime.sendMessage({ action: 'getState' }, (response: { mode: TimerMode; timeLeft: number; isRunning: boolean; sessions: number; settings: SettingsType } | undefined) => {
           if (response) {
+            // Batch state updates to avoid cascading renders
             setMode(response.mode);
             setTimeLeft(response.timeLeft);
             setIsRunning(response.isRunning);
@@ -101,7 +104,7 @@ function App() {
 
       return () => clearInterval(syncInterval);
     }
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   const getRandomQuote = () => {
     const randomIndex = Math.floor(Math.random() * quotes.length);

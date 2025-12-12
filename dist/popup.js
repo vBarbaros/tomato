@@ -168,24 +168,40 @@ function loadHeatmap() {
 }
 
 function loadSettings() {
-  const settings = JSON.parse(localStorage.getItem('pomodoro_settings') || '{}');
-  
-  document.getElementById('soundEnabled').checked = settings.soundEnabled !== false;
-  document.getElementById('workDuration').value = settings.workDuration || 25;
-  document.getElementById('breakDuration').value = settings.breakDuration || 5;
-  document.getElementById('longBreakDuration').value = settings.longBreakDuration || 15;
+  // First try to get settings from background worker, then fallback to localStorage
+  chrome.runtime.sendMessage({ action: 'getState' }, (response) => {
+    let settings = {};
+    
+    if (response && response.settings) {
+      settings = response.settings;
+    } else {
+      settings = JSON.parse(localStorage.getItem('pomodoro_settings') || '{}');
+    }
+    
+    document.getElementById('soundEnabled').checked = settings.soundEnabled !== false;
+    document.getElementById('tickSoundEnabled').checked = settings.tickSoundEnabled === true;
+    document.getElementById('workDuration').value = settings.workDuration || 25;
+    document.getElementById('breakDuration').value = settings.breakDuration || 5;
+    document.getElementById('longBreakDuration').value = settings.longBreakDuration || 15;
+  });
 }
 
 function saveSettings() {
   const settings = {
     soundEnabled: document.getElementById('soundEnabled').checked,
+    tickSoundEnabled: document.getElementById('tickSoundEnabled').checked,
     workDuration: parseInt(document.getElementById('workDuration').value),
     breakDuration: parseInt(document.getElementById('breakDuration').value),
     longBreakDuration: parseInt(document.getElementById('longBreakDuration').value)
   };
   
+  // Save to localStorage
   localStorage.setItem('pomodoro_settings', JSON.stringify(settings));
-  chrome.runtime.sendMessage({ action: 'updateSettings', settings });
+  
+  // Sync with background worker
+  chrome.runtime.sendMessage({ action: 'updateSettings', settings }, (response) => {
+    console.log('Settings updated in background worker');
+  });
 }
 
 function updateUI() {
@@ -219,6 +235,7 @@ document.getElementById('settingsNav').addEventListener('click', () => showView(
 
 // Settings event listeners
 document.getElementById('soundEnabled').addEventListener('change', saveSettings);
+document.getElementById('tickSoundEnabled').addEventListener('change', saveSettings);
 document.getElementById('workDuration').addEventListener('change', saveSettings);
 document.getElementById('breakDuration').addEventListener('change', saveSettings);
 document.getElementById('longBreakDuration').addEventListener('change', saveSettings);
