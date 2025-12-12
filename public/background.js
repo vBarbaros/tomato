@@ -19,9 +19,20 @@ let timerState = {
 let intervalId = null;
 let isInitialized = false;
 
+// Keep service worker alive with periodic alarm
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepAlive') {
+    // Just update badge to keep worker active
+    updateBadge();
+  }
+});
+
 // Initialize state immediately on startup
 const initializeState = () => {
   if (isInitialized) return;
+  
+  // Create keepAlive alarm - less frequent to reduce load
+  chrome.alarms.create('keepAlive', { periodInMinutes: 2 }); // Every 2 minutes
   
   chrome.storage.local.get(['timerState', 'pomodoro_settings'], (result) => {
     if (result.timerState) {
@@ -35,8 +46,15 @@ const initializeState = () => {
       }
     }
     
-    // Ensure timer is not running on startup
+    // Always reset to fresh state on startup
     timerState.isRunning = false;
+    const durations = {
+      work: timerState.settings.workDuration * 60,
+      break: timerState.settings.breakDuration * 60,
+      longBreak: timerState.settings.longBreakDuration * 60
+    };
+    timerState.timeLeft = durations[timerState.mode];
+    
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
@@ -67,22 +85,36 @@ function updateBadge() {
     chrome.action.setBadgeText({ text });
     chrome.action.setBadgeBackgroundColor({ color: '#d95550' });
     chrome.action.setBadgeTextColor({ color: '#ffffff' });
-  } else if (timerState.timeLeft < timerState.settings.workDuration * 60) {
-    // Show pause symbol if timer was started but is now paused
-    chrome.action.setBadgeText({ text: '||' });
-    chrome.action.setBadgeBackgroundColor({ color: '#d95550' });
-    chrome.action.setBadgeTextColor({ color: '#ffffff' });
   } else {
-    // Clear badge when reset
-    chrome.action.setBadgeText({ text: '' });
+    const durations = {
+      work: timerState.settings.workDuration * 60,
+      break: timerState.settings.breakDuration * 60,
+      longBreak: timerState.settings.longBreakDuration * 60
+    };
+    
+    if (timerState.timeLeft < durations[timerState.mode]) {
+      // Show pause symbol if timer was started but is now paused
+      chrome.action.setBadgeText({ text: '||' });
+      chrome.action.setBadgeBackgroundColor({ color: '#d95550' });
+      chrome.action.setBadgeTextColor({ color: '#ffffff' });
+    } else {
+      // Clear badge when reset or at full duration
+      chrome.action.setBadgeText({ text: '' });
+    }
   }
 }
 
 function tick() {
   if (timerState.isRunning && timerState.timeLeft > 0) {
     timerState.timeLeft--;
+    
+    // Update badge every second when running
     updateBadge();
-    saveState();
+    
+    // Only save state every 10 seconds to reduce I/O
+    if (timerState.timeLeft % 10 === 0) {
+      saveState();
+    }
 
     // Play tick sound if enabled
     if (timerState.settings.tickSoundEnabled) {
@@ -239,7 +271,7 @@ function startTimer() {
 
 function pauseTimer() {
   timerState.isRunning = false;
-  updateBadge();
+  updateBadge(); // Update badge immediately
   saveState();
 }
 
@@ -255,7 +287,7 @@ function resetTimer() {
     longBreak: timerState.settings.longBreakDuration * 60
   };
   timerState.timeLeft = durations[timerState.mode];
-  updateBadge();
+  updateBadge(); // Update badge immediately
   saveState();
 }
 
@@ -401,46 +433,53 @@ chrome.contextMenus.onClicked.addListener((info) => {
   }
 });
 
-// Handle extension icon clicks
-// Delays: Single click: 250ms, Double click: 250ms, Triple click: 250ms
+// Handle extension icon clicks with timing-based approach
+let lastClickTime = 0;
 let clickTimeout = null;
-let clickCount = 0;
+let isProcessing = false;
 
 chrome.action.onClicked.addListener(() => {
-  clickCount++;
-
-  // Clear existing timeout
+  if (isProcessing) return;
+  
+  const now = Date.now();
+  const timeSinceLastClick = now - lastClickTime;
+  
+  // Clear any existing timeout
   if (clickTimeout) {
     clearTimeout(clickTimeout);
+    clickTimeout = null;
   }
-
-  // Wait for potential multiple clicks
-  clickTimeout = setTimeout(() => {
-    if (clickCount === 1) {
-      // Single click - toggle timer (150ms delay)
-      if (timerState.isRunning) {
-        pauseTimer();
-      } else {
-        // Provide immediate visual feedback before starting
-        chrome.action.setBadgeText({ text: '...' });
-        chrome.action.setBadgeBackgroundColor({ color: '#d95550' });
-        startTimer();
-      }
-    } else if (clickCount === 2) {
-      // Double click - reset (150ms delay)
-      chrome.action.setBadgeText({ text: 'RST' });
-      chrome.action.setBadgeBackgroundColor({ color: '#6c757d' });
-      resetTimer();
-    } else if (clickCount >= 3) {
-      // Triple click - open popup (150ms delay)
-      chrome.action.setPopup({ popup: 'popup.html' });
-      chrome.action.openPopup().then(() => {
-        // Reset popup setting after opening
-        setTimeout(() => {
-          chrome.action.setPopup({ popup: '' });
-        }, 100);
-      });
+  
+  // If this is a quick second click (double-click)
+  if (timeSinceLastClick < 400 && lastClickTime > 0) {
+    isProcessing = true;
+    
+    // Double click - toggle timer
+    if (timerState.isRunning) {
+      pauseTimer();
+    } else {
+      startTimer();
     }
-    clickCount = 0;
-  }, 250); // Increased back to 250ms for better multi-click detection
+    
+    lastClickTime = 0; // Reset to prevent triple-click issues
+    isProcessing = false;
+    return;
+  }
+  
+  // This might be a single click - wait to see if another click comes
+  lastClickTime = now;
+  clickTimeout = setTimeout(() => {
+    // Single click - open popup
+    isProcessing = true;
+    chrome.action.setPopup({ popup: 'popup.html' });
+    chrome.action.openPopup().then(() => {
+      setTimeout(() => {
+        chrome.action.setPopup({ popup: '' });
+        isProcessing = false;
+      }, 200);
+    }).catch(() => {
+      isProcessing = false;
+    });
+    lastClickTime = 0;
+  }, 400);
 });

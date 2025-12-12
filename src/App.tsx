@@ -388,7 +388,7 @@ function App() {
             <button onClick={resetTimer} className="control-btn">↻</button>
           </div>
 
-          <div className="timer">
+          <div className="timer" onDoubleClick={resetTimer}>
             {formatTime(timeLeft)}
           </div>
 

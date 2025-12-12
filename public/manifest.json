@@ -23,6 +23,7 @@
     "storage",
     "offscreen",
     "contextMenus",
-    "tabs"
+    "tabs",
+    "alarms"
   ]
 }
