@@ -138,40 +138,34 @@ const getWeeklyComparison = (history: HistoryEntry[]) => {
 
 // Helper function to get goal progress
 const getGoalProgress = (history: HistoryEntry[], settings: any) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const now = Date.now();
+  const today = getStartOfDay(now);
   
   // Daily progress
-  const todayStart = new Date(today);
-  const todayEnd = new Date(today);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-  
   const todaySessions = history.filter(entry => {
-    const entryDate = new Date(entry.completedAt);
-    return entryDate >= todayStart && entryDate < todayEnd && entry.mode === 'work';
+    return getStartOfDay(entry.completedAt) === today && entry.mode === 'work';
   }).length;
   
   // Weekly progress (Monday to Sunday)
-  const weekStart = new Date(today);
-  const dayOfWeek = weekStart.getDay();
+  const currentDate = new Date(now);
+  const dayOfWeek = currentDate.getDay();
   const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStart = new Date(currentDate);
   weekStart.setDate(weekStart.getDate() - daysToMonday);
-  
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekStartDay = getStartOfDay(weekStart.getTime());
   
   const weekSessions = history.filter(entry => {
-    const entryDate = new Date(entry.completedAt);
-    return entryDate >= weekStart && entryDate < weekEnd && entry.mode === 'work';
+    const entryDay = getStartOfDay(entry.completedAt);
+    return entryDay >= weekStartDay && entryDay <= today && entry.mode === 'work';
   }).length;
   
   // Monthly progress
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const monthStartDay = getStartOfDay(monthStart.getTime());
   
   const monthSessions = history.filter(entry => {
-    const entryDate = new Date(entry.completedAt);
-    return entryDate >= monthStart && entryDate < monthEnd && entry.mode === 'work';
+    const entryDay = getStartOfDay(entry.completedAt);
+    return entryDay >= monthStartDay && entryDay <= today && entry.mode === 'work';
   }).length;
   
   return {
@@ -507,13 +501,12 @@ export default function History({ history, tasks, settings }: Props) {
   const getHeatmapData = () => {
     const { startDate, endDate } = getDateRange();
     
-    const dayMap: Record<string, number> = {};
+    const dayMap: Record<number, number> = {};
     
     history.forEach(entry => {
       if (entry.mode === 'work') {
-        const date = new Date(entry.completedAt);
-        const dateKey = date.toISOString().split('T')[0];
-        dayMap[dateKey] = (dayMap[dateKey] || 0) + 1;
+        const dayKey = getStartOfDay(entry.completedAt);
+        dayMap[dayKey] = (dayMap[dayKey] || 0) + 1;
       }
     });
 
@@ -532,8 +525,8 @@ export default function History({ history, tasks, settings }: Props) {
     const current = new Date(startDate);
     
     while (current <= endDate) {
-      const dateKey = current.toISOString().split('T')[0];
-      const count = dayMap[dateKey] || 0;
+      const dayKey = getStartOfDay(current.getTime());
+      const count = dayMap[dayKey] || 0;
       
       currentWeek.push({ date: new Date(current), count });
       
@@ -568,6 +561,26 @@ export default function History({ history, tasks, settings }: Props) {
         currentWeek.push(null);
       }
       weeks.push(currentWeek);
+    }
+    
+    // Ensure the final month label is added if we haven't seen it yet
+    if (weeks.length > 0) {
+      const lastWeek = weeks[weeks.length - 1];
+      const lastRealDay = lastWeek.find(day => day !== null);
+      if (lastRealDay) {
+        const lastMonth = lastRealDay.date.getMonth();
+        const hasLastMonthLabel = monthLabels.some(label => {
+          const labelDate = new Date(lastRealDay.date.getFullYear(), lastMonth, 1);
+          return label.month === labelDate.toLocaleDateString('en-US', { month: 'short' });
+        });
+        
+        if (!hasLastMonthLabel) {
+          monthLabels.push({
+            month: lastRealDay.date.toLocaleDateString('en-US', { month: 'short' }),
+            weekIndex: weeks.length - 1
+          });
+        }
+      }
     }
     
     return { weeks, monthLabels };
@@ -732,7 +745,7 @@ export default function History({ history, tasks, settings }: Props) {
             <div className="streak-label">Longest Streak</div>
           </div>
           <div className="streak-card">
-            <div className="streak-icon">📅</div>
+            <div className="streak-icon">🗓️</div>
             <div className="streak-value">
               {currentStreak > 0 ? `${currentStreak} days` : 'Start today!'}
             </div>
@@ -1084,15 +1097,11 @@ export default function History({ history, tasks, settings }: Props) {
       <div className="recent-activity">
         <h3>Today's Recent Activity</h3>
         {(() => {
-          const today = new Date();
-          const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-          const endOfDay = new Date(startOfDay);
-          endOfDay.setDate(endOfDay.getDate() + 1);
+          const today = getStartOfDay(Date.now());
           
           const todayEntries = history
             .filter(entry => {
-              const entryDate = new Date(entry.completedAt);
-              return entryDate >= startOfDay && entryDate < endOfDay;
+              return getStartOfDay(entry.completedAt) === today;
             })
             .sort((a, b) => b.completedAt - a.completedAt) // Descending order
             .slice(0, 10); // Limit to 10 most recent

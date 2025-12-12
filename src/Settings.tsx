@@ -54,23 +54,29 @@ export default function Settings({ settings, onSave }: Props) {
         
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.autoStartBreaks}
-              onChange={(e) => handleChange('autoStartBreaks', e.target.checked)}
-            />
             Auto-start breaks
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.autoStartBreaks}
+                onChange={(e) => handleChange('autoStartBreaks', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
 
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.autoStartWork}
-              onChange={(e) => handleChange('autoStartWork', e.target.checked)}
-            />
             Auto-start work sessions
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.autoStartWork}
+                onChange={(e) => handleChange('autoStartWork', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
       </div>
@@ -112,23 +118,29 @@ export default function Settings({ settings, onSave }: Props) {
         
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.openTabOnComplete}
-              onChange={(e) => handleChange('openTabOnComplete', e.target.checked)}
-            />
             Open new tab when cycle completes
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.openTabOnComplete}
+                onChange={(e) => handleChange('openTabOnComplete', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
 
         <div className="setting-item">
           <label>
-            <input
-              type="checkbox"
-              checked={settings.autoCloseTab}
-              onChange={(e) => handleChange('autoCloseTab', e.target.checked)}
-            />
             Auto-close tab after starting new cycle
+            <div className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.autoCloseTab}
+                onChange={(e) => handleChange('autoCloseTab', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
           </label>
         </div>
       </div>
