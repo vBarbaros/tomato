@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    :root {
+      --popup-view-height: 300px;
+    }
+    
     body {
       width: 320px;
       padding: 0;
@@ -23,6 +27,40 @@
       font-size: 12px;
       line-height: 1.4;
       margin: 0;
+    }
+    
+    .nav-bar {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+      background: white;
+    }
+    
+    .nav-btn {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #ddd;
+      background: white;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .nav-btn:hover {
+      border-color: #d95550;
+      transform: scale(1.05);
+    }
+    
+    .nav-btn.active {
+      background: #d95550;
+      color: white;
+      border-color: #d95550;
     }
     
     .content {
@@ -131,6 +169,69 @@
       border-color: #d95550;
     }
     
+    .view {
+      display: none !important;
+      height: var(--popup-view-height);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .view.active {
+      display: flex !important;
+    }
+    
+    #settingsView {
+      height: var(--popup-view-height);
+    }
+    
+    .settings-form {
+      text-align: left;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+    
+    .setting-group {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 250px;
+    }
+    
+    .setting-group label {
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+      font-size: 14px;
+      margin: 0;
+      text-align: left;
+      flex: 1;
+    }
+    
+    .setting-group input[type="number"] {
+      width: 70px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .setting-group input[type="checkbox"] {
+      width: 70px;
+      text-align: center;
+    }
+    
+    #calendarView {
+      height: var(--popup-view-height);
+    }
+    
+    .heatmap {
+      font-size: 12px;
+      text-align: center;
+    }
+    
     .full-page-link {
       text-align: center;
       margin-top: 10px;
@@ -152,23 +253,59 @@
     <p class="quote-text" id="quote">Loading...</p>
   </div>
   
+  <div class="nav-bar">
+    <button id="timerNav" class="nav-btn active" title="Timer">⏱️</button>
+    <button id="calendarNav" class="nav-btn" title="Calendar">📅</button>
+    <button id="settingsNav" class="nav-btn" title="Settings">⚙️</button>
+  </div>
+  
   <div class="content">
-    <div class="controls">
-      <button id="startBtn" class="control-btn primary">▶</button>
-      <button id="resetBtn" class="control-btn">↻</button>
+    <div id="timerView" class="view active">
+      <div class="controls">
+        <button id="startBtn" class="control-btn primary">▶</button>
+        <button id="resetBtn" class="control-btn">↻</button>
+      </div>
+      
+      <div class="timer" id="timer">25:00</div>
+      
+      <div class="task-selector">
+        <select id="taskSelect">
+          <option value="">Generic</option>
+        </select>
+      </div>
+      
+      <div class="mode-buttons">
+        <button id="workBtn" title="Work">💼</button>
+        <button id="breakBtn" title="Break">☕</button>
+      </div>
     </div>
     
-    <div class="timer" id="timer">25:00</div>
-    
-    <div class="task-selector">
-      <select id="taskSelect">
-        <option value="">Generic</option>
-      </select>
+    <div id="calendarView" class="view">
+      <div class="heatmap">
+        <h3>This Month's Activity</h3>
+        <div id="heatmapContainer">Loading...</div>
+      </div>
     </div>
     
-    <div class="mode-buttons">
-      <button id="workBtn" title="Work">💼</button>
-      <button id="breakBtn" title="Break">☕</button>
+    <div id="settingsView" class="view">
+      <div class="settings-form">
+        <div class="setting-group">
+          <label>Enable Sounds</label>
+          <input type="checkbox" id="soundEnabled">
+        </div>
+        <div class="setting-group">
+          <label>Work (mins):</label>
+          <input type="number" id="workDuration" min="1" max="60" value="25">
+        </div>
+        <div class="setting-group">
+          <label>Break (mins):</label>
+          <input type="number" id="breakDuration" min="1" max="30" value="5">
+        </div>
+        <div class="setting-group">
+          <label>Long Break (mins):</label>
+          <input type="number" id="longBreakDuration" min="1" max="60" value="15">
+        </div>
+      </div>
     </div>
     
     <div class="full-page-link">

@@ -2,6 +2,7 @@ let state = null;
 let tasks = [];
 let currentTaskId = null;
 let hasStarted = false;
+let currentView = 'timer';
 
 const quotes = [
   "Focus on being productive instead of busy.",
@@ -15,6 +16,31 @@ function formatTime(seconds) {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function showView(viewName) {
+  // Hide all views
+  document.querySelectorAll('.view').forEach(view => {
+    view.classList.remove('active');
+  });
+  
+  // Remove active from all nav buttons
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // Show selected view
+  document.getElementById(viewName + 'View').classList.add('active');
+  document.getElementById(viewName + 'Nav').classList.add('active');
+  
+  currentView = viewName;
+  
+  // Only load content when switching TO that specific view
+  if (viewName === 'calendar') {
+    loadHeatmap();
+  } else if (viewName === 'settings') {
+    loadSettings();
+  }
 }
 
 function loadTasks() {
@@ -43,6 +69,125 @@ function loadQuote() {
   document.getElementById('quote').textContent = randomQuote;
 }
 
+function loadHeatmap() {
+  const history = JSON.parse(localStorage.getItem('pomodoro_history') || '[]');
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  // Get days in current month
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  
+  // Count sessions per day
+  const dailyCounts = {};
+  history.forEach(entry => {
+    const entryDate = new Date(entry.completedAt);
+    if (entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear) {
+      const day = entryDate.getDate();
+      dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+    }
+  });
+  
+  // Color function matching main app
+  const getIntensityColor = (count) => {
+    if (count === 0) return '#ebedf0';
+    if (count <= 2) return '#c6e48b';
+    if (count <= 4) return '#7bc96f';
+    if (count <= 6) return '#239a3b';
+    return '#196127';
+  };
+  
+  // Month name
+  const monthName = new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  // Generate calendar HTML with larger sizing
+  let html = `
+    <h3 style="margin: 0 0 20px 0; font-size: 16px; text-align: center;">${monthName}</h3>
+    <div style="display: flex; gap: 0; justify-content: center;">
+      <div style="display: flex; flex-direction: column; width: 24px; margin-right: 4px;">
+        <div style="height: 14px;"></div>
+        <div style="height: 12px; margin-bottom: 4px; font-size: 11px; display: flex; align-items: center;">M</div>
+        <div style="height: 12px; margin-bottom: 4px;"></div>
+        <div style="height: 12px; margin-bottom: 4px; font-size: 11px; display: flex; align-items: center;">W</div>
+        <div style="height: 12px; margin-bottom: 4px;"></div>
+        <div style="height: 12px; margin-bottom: 4px; font-size: 11px; display: flex; align-items: center;">F</div>
+        <div style="height: 12px; margin-bottom: 4px;"></div>
+      </div>
+      <div style="display: flex; gap: 4px;">
+  `;
+  
+  // Calculate weeks
+  const totalCells = firstDay + daysInMonth;
+  const weeks = Math.ceil(totalCells / 7);
+  
+  for (let week = 0; week < weeks; week++) {
+    html += `<div style="display: flex; flex-direction: column; gap: 4px;">`;
+    
+    for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
+      const cellIndex = week * 7 + dayOfWeek;
+      const day = cellIndex - firstDay + 1;
+      
+      if (cellIndex < firstDay || day > daysInMonth) {
+        // Empty cell
+        html += `<div style="width: 12px; height: 12px;"></div>`;
+      } else {
+        // Day cell
+        const count = dailyCounts[day] || 0;
+        const color = getIntensityColor(count);
+        const isToday = day === now.getDate();
+        
+        html += `<div style="
+          width: 12px; 
+          height: 12px; 
+          background-color: ${color}; 
+          border-radius: 2px;
+          ${isToday ? 'outline: 2px solid #333; outline-offset: 1px;' : ''}
+        " title="${day}/${currentMonth + 1}: ${count} sessions"></div>`;
+      }
+    }
+    
+    html += `</div>`;
+  }
+  
+  html += `
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 20px; font-size: 11px;">
+      <span>Less</span>
+      <div style="width: 10px; height: 10px; background-color: #ebedf0; border-radius: 2px;"></div>
+      <div style="width: 10px; height: 10px; background-color: #c6e48b; border-radius: 2px;"></div>
+      <div style="width: 10px; height: 10px; background-color: #7bc96f; border-radius: 2px;"></div>
+      <div style="width: 10px; height: 10px; background-color: #239a3b; border-radius: 2px;"></div>
+      <div style="width: 10px; height: 10px; background-color: #196127; border-radius: 2px;"></div>
+      <span>More</span>
+    </div>
+  `;
+  
+  document.getElementById('heatmapContainer').innerHTML = html;
+}
+
+function loadSettings() {
+  const settings = JSON.parse(localStorage.getItem('pomodoro_settings') || '{}');
+  
+  document.getElementById('soundEnabled').checked = settings.soundEnabled !== false;
+  document.getElementById('workDuration').value = settings.workDuration || 25;
+  document.getElementById('breakDuration').value = settings.breakDuration || 5;
+  document.getElementById('longBreakDuration').value = settings.longBreakDuration || 15;
+}
+
+function saveSettings() {
+  const settings = {
+    soundEnabled: document.getElementById('soundEnabled').checked,
+    workDuration: parseInt(document.getElementById('workDuration').value),
+    breakDuration: parseInt(document.getElementById('breakDuration').value),
+    longBreakDuration: parseInt(document.getElementById('longBreakDuration').value)
+  };
+  
+  localStorage.setItem('pomodoro_settings', JSON.stringify(settings));
+  chrome.runtime.sendMessage({ action: 'updateSettings', settings });
+}
+
 function updateUI() {
   if (!state) return;
   
@@ -66,6 +211,17 @@ function getState() {
     updateUI();
   });
 }
+
+// Navigation event listeners
+document.getElementById('timerNav').addEventListener('click', () => showView('timer'));
+document.getElementById('calendarNav').addEventListener('click', () => showView('calendar'));
+document.getElementById('settingsNav').addEventListener('click', () => showView('settings'));
+
+// Settings event listeners
+document.getElementById('soundEnabled').addEventListener('change', saveSettings);
+document.getElementById('workDuration').addEventListener('change', saveSettings);
+document.getElementById('breakDuration').addEventListener('change', saveSettings);
+document.getElementById('longBreakDuration').addEventListener('change', saveSettings);
 
 document.getElementById('taskSelect').addEventListener('change', (e) => {
   currentTaskId = e.target.value || null;
@@ -113,6 +269,7 @@ document.getElementById('fullPageLink').addEventListener('click', (e) => {
 loadTasks();
 loadQuote();
 getState();
+showView('timer'); // Start with timer view
 // Update every second
 setInterval(getState, 1000);
 
