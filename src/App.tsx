@@ -32,14 +32,14 @@ function App() {
   // Detect if running as extension
   useEffect(() => {
     isExtension.current = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id;
-    
+
     // Check if this is a new tab opened for cycle completion
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('cycleComplete') === 'true') {
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => setView('cyclePrompt'), 0);
     }
-    
+
     // Check if opened from context menu with target view
     if (isExtension.current) {
       chrome.storage.local.get(['targetView'], (result: { targetView?: string }) => {
@@ -48,7 +48,7 @@ function App() {
           chrome.storage.local.remove('targetView');
         }
       });
-      
+
       // Listen for storage changes to update history
       const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: chrome.storage.AreaName) => {
         if (areaName === 'local') {
@@ -62,9 +62,9 @@ function App() {
           }
         }
       };
-      
+
       chrome.storage.onChanged.addListener(handleStorageChange);
-      
+
       return () => {
         chrome.storage.onChanged.removeListener(handleStorageChange);
       };
@@ -88,23 +88,27 @@ function App() {
         }
       });
 
-      // Keep syncing every second
+      // Sync every second, but only update when background timer is running
       const syncInterval = setInterval(() => {
         chrome.runtime.sendMessage({ action: 'getState' }, (response: { mode: TimerMode; timeLeft: number; isRunning: boolean; sessions: number; settings: SettingsType } | undefined) => {
           if (response) {
-            // Batch state updates to avoid cascading renders
+            // Always sync mode, timeLeft, and sessions
             setMode(response.mode);
             setTimeLeft(response.timeLeft);
-            setIsRunning(response.isRunning);
             setSessions(response.sessions);
             setHasStarted(response.timeLeft < response.settings.workDuration * 60);
+            
+            // Sync isRunning state, but only if timer completed (timeLeft === 0) or is running
+            if (response.timeLeft === 0 || response.isRunning) {
+              setIsRunning(response.isRunning);
+            }
           }
         });
       }, 1000);
 
       return () => clearInterval(syncInterval);
     }
-  }, []); // Empty dependency array to run only once
+  }, []); // Only sync once on mount
 
   const getRandomQuote = () => {
     const randomIndex = Math.floor(Math.random() * quotes.length);
@@ -113,9 +117,9 @@ function App() {
 
   const handleTabManagement = useCallback(() => {
     if (!isExtension.current || !settings.openTabOnComplete) return;
-    
+
     // Don't open tab if auto-start is enabled
-    if ((mode === 'work' && settings.autoStartBreaks) || 
+    if ((mode === 'work' && settings.autoStartBreaks) ||
         (mode !== 'work' && settings.autoStartWork)) {
       return;
     }
@@ -128,9 +132,9 @@ function App() {
         chrome.windows.update(tabs[0].windowId!, { focused: true });
       } else {
         // Create new tab with cycle completion flag
-        chrome.tabs.create({ 
+        chrome.tabs.create({
           url: chrome.runtime.getURL('index.html?cycleComplete=true'),
-          active: true 
+          active: true
         });
       }
     });
@@ -139,7 +143,7 @@ function App() {
   const handleTimerComplete = useCallback(() => {
     setIsRunning(false);
     getRandomQuote();
-    
+
     const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
     startTimeRef.current = 0;
 
@@ -167,7 +171,7 @@ function App() {
 
       const newSessions = sessions + 1;
       setSessions(newSessions);
-      
+
       if (newSessions % 4 === 0) {
         setMode('longBreak');
         setTimeLeft(settings.longBreakDuration * 60);
@@ -196,7 +200,7 @@ function App() {
   useEffect(() => {
     // Don't run local timer if we're syncing with background worker
     if (isExtension.current) return;
-    
+
     if (isRunning && timeLeft > 0) {
       if (startTimeRef.current === 0) {
         startTimeRef.current = Date.now();
@@ -216,7 +220,7 @@ function App() {
   useEffect(() => {
     // Don't handle completion locally if we're syncing with background worker
     if (isExtension.current) return;
-    
+
     if (timeLeft === 0 && startTimeRef.current !== 0) {
       queueMicrotask(() => handleTimerComplete());
     }
@@ -303,7 +307,7 @@ function App() {
   const handleSaveSettings = (newSettings: SettingsType) => {
     setSettings(newSettings);
     storage.saveSettings(newSettings);
-    
+
     // Sync with background worker if running as extension
     if (isExtension.current) {
       chrome.runtime.sendMessage({ action: 'updateSettings', settings: newSettings });
@@ -330,13 +334,13 @@ function App() {
     // Check if we're in a cycle completion tab
     const urlParams = new URLSearchParams(window.location.search);
     const isCycleCompleteTab = urlParams.get('cycleComplete') === 'true';
-    
+
     if (isCycleCompleteTab && isExtension.current) {
       // Remove the cycle complete parameter and navigate to timer
       const newUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-    
+
     setView('timer');
   };
 
@@ -396,8 +400,8 @@ function App() {
           </div>
 
           <div className="task-selector">
-            <select 
-              value={currentTaskId || ''} 
+            <select
+              value={currentTaskId || ''}
               onChange={(e) => handleSelectTask(e.target.value || null)}
             >
               <option value="">Generic</option>
@@ -410,15 +414,15 @@ function App() {
           </div>
 
           <div className="mode-buttons">
-            <button 
-              className={mode === 'work' ? 'active' : ''} 
+            <button
+              className={mode === 'work' ? 'active' : ''}
               onClick={() => switchMode('work')}
               title="Work"
             >
               💼
             </button>
-            <button 
-              className={mode === 'break' ? 'active' : ''} 
+            <button
+              className={mode === 'break' ? 'active' : ''}
               onClick={() => switchMode('break')}
               title="Break"
             >
@@ -456,7 +460,7 @@ function App() {
       )}
 
       {view === 'cyclePrompt' && (
-        <CyclePrompt 
+        <CyclePrompt
           onStartCycle={handleStartCycle}
           onGoToTimer={handleGoToTimer}
           settings={settings}

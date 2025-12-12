@@ -46,18 +46,26 @@ const initializeState = () => {
       }
     }
     
-    // Always reset to fresh state on startup
-    timerState.isRunning = false;
-    const durations = {
-      work: timerState.settings.workDuration * 60,
-      break: timerState.settings.breakDuration * 60,
-      longBreak: timerState.settings.longBreakDuration * 60
-    };
-    timerState.timeLeft = durations[timerState.mode];
+    // Don't reset running state on startup - preserve pause state
+    // Only reset if timer was completed (timeLeft === 0)
+    if (timerState.timeLeft === 0) {
+      timerState.isRunning = false;
+      const durations = {
+        work: timerState.settings.workDuration * 60,
+        break: timerState.settings.breakDuration * 60,
+        longBreak: timerState.settings.longBreakDuration * 60
+      };
+      timerState.timeLeft = durations[timerState.mode];
+    }
     
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
+    }
+    
+    // Restart interval only if timer was running
+    if (timerState.isRunning) {
+      intervalId = setInterval(tick, 1000);
     }
     
     updateBadge();
