@@ -96,12 +96,17 @@ function App() {
             setMode(response.mode);
             setTimeLeft(response.timeLeft);
             setSessions(response.sessions);
-            setHasStarted(response.timeLeft < response.settings.workDuration * 60);
             
-            // Sync isRunning state, but only if timer completed (timeLeft === 0) or is running
-            if (response.timeLeft === 0 || response.isRunning) {
-              setIsRunning(response.isRunning);
-            }
+            // Always sync isRunning state to handle completion properly
+            setIsRunning(response.isRunning);
+            
+            // Update hasStarted based on current state
+            const durations = {
+              work: response.settings?.workDuration * 60 || settings.workDuration * 60,
+              break: response.settings?.breakDuration * 60 || settings.breakDuration * 60,
+              longBreak: response.settings?.longBreakDuration * 60 || settings.longBreakDuration * 60
+            };
+            setHasStarted(response.timeLeft < durations[response.mode]);
           }
         });
       }, 1000);
@@ -244,6 +249,14 @@ function App() {
     if (isExtension.current) {
       chrome.runtime.sendMessage({ action: 'reset' });
       setHasStarted(false);
+      // Immediately update local state to prevent sync override
+      setIsRunning(false);
+      const durations = {
+        work: settings.workDuration * 60,
+        break: settings.breakDuration * 60,
+        longBreak: settings.longBreakDuration * 60
+      };
+      setTimeLeft(durations[mode]);
     } else {
       setIsRunning(false);
       startTimeRef.current = 0;
