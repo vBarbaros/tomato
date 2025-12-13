@@ -769,14 +769,14 @@ export default function History({ history, tasks, settings }: Props) {
               id="csv-import"
             />
             <label htmlFor="csv-import" className="import-btn">
-              📤 Import CSV
+              ↑ Import CSV
             </label>
             <button 
               className="export-btn" 
               onClick={() => exportToCSV(history, tasks)}
               title="Export all history to CSV"
             >
-              📥 Export CSV
+              ↓ Export CSV
             </button>
           </div>
         </div>
@@ -915,18 +915,21 @@ export default function History({ history, tasks, settings }: Props) {
           <div className="heatmap">
             {heatmapData.map((week, weekIdx) => (
               <div key={weekIdx} className="heatmap-week">
-                {week.map((day, dayIdx) => (
-                  day !== null ? (
-                    <div
-                      key={dayIdx}
-                      className="heatmap-day"
-                      style={{ backgroundColor: getIntensityColor(day.count) }}
-                      title={`${day.date.toLocaleDateString()}: ${day.count} sessions`}
-                    />
-                  ) : (
-                    <div key={dayIdx} className="heatmap-day-empty" />
-                  )
-                ))}
+                {week.map((day, dayIdx) => {
+                  if (day !== null) {
+                    const isToday = getStartOfDay(day.date.getTime()) === getStartOfDay(Date.now());
+                    return (
+                      <div
+                        key={dayIdx}
+                        className={`heatmap-day ${isToday ? 'current-day' : ''}`}
+                        style={{ backgroundColor: getIntensityColor(day.count) }}
+                        title={`${day.date.toLocaleDateString()}: ${day.count} sessions`}
+                      />
+                    );
+                  } else {
+                    return <div key={dayIdx} className="heatmap-day-empty" />;
+                  }
+                })}
               </div>
             ))}
           </div>
