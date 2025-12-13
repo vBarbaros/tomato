@@ -41,14 +41,14 @@ export default function CyclePrompt({ onStartCycle, onGoToTimer, settings, nextM
         <p>Next up: <strong>{getModeLabel(nextMode)}</strong></p>
         
         <div className="cycle-actions">
-          <button onClick={() => handleStartCycle('work')} className="cycle-btn">
+          <button onClick={() => handleStartCycle('work')} className="cycle-btn primary">
             💼 Start Work Session
           </button>
           <button onClick={() => handleStartCycle(sessions % 4 === 0 ? 'longBreak' : 'break')} className="cycle-btn">
             ☕ Start {getNextBreakType()}
           </button>
           <button onClick={handleGoToTimer} className="cycle-btn secondary">
-            ⚙️ Go to Timer View
+            🍅 Go to Timer View
           </button>
         </div>
 
