@@ -1524,16 +1524,18 @@
 .about-view {
   margin: 0 auto;
   line-height: 1.6;
-  padding: 2em;
+  padding: 20px;
+  max-width: 800px;
 }
 
 .about-hero {
   text-align: center;
   margin-bottom: 40px;
   padding: 30px 20px;
-  background: linear-gradient(135deg, #c44540 0%, #e86560 100%);
+  background: linear-gradient(135deg, #d95550 0%, #c44540 100%);
   color: white;
   border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(217, 85, 80, 0.3);
 }
 
 .about-hero h2 {
@@ -1550,7 +1552,7 @@
 .about-sections {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 25px;
 }
 
 .about-section {
@@ -1559,11 +1561,17 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #eee;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.about-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .about-section h3 {
   margin: 0 0 15px 0;
-  color: #c44540;
+  color: #d95550;
   font-size: 18px;
 }
 
@@ -1588,24 +1596,27 @@
 
 .developer-link {
   display: inline-block;
-  background: #007bff;
+  background: #d95550;
   color: white;
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: 12px 24px;
+  border-radius: 8px;
   text-decoration: none;
   font-weight: 500;
-  transition: background-color 0.2s ease;
-  margin-top: 10px;
+  transition: all 0.2s ease;
+  margin-top: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .developer-link:hover {
-  background: #0056b3;
+  background: #c44540;
   color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .about-section.disclaimer {
   background: #f8f9fa;
-  border-left: 4px solid #6c757d;
+  border-left: 4px solid #d95550;
 }
 
 .about-footer {
