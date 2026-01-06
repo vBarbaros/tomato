@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Tomato Timer",
+  "version": "1.0.0",
+  "description": "A simple Tomato timer to boost productivity",
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "notifications",
+    "storage",
+    "contextMenus",
+    "tabs",
+    "alarms"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tomato-timer@example.com"
+    }
+  }
+}

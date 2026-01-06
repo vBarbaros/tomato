@@ -55,17 +55,23 @@ pomodoro/
 ## Development
 
 ```bash
-# Install dependencies (already done)
-npm install
+npm install          # Install dependencies
+npm run dev          # Run development server
+npm run build        # Build for production
+```
 
-# Run development server
-npm run dev
+## Browser Extension Builds
 
-# Build for production
-npm run build
+```bash
+# Build for specific browser
+npm run build:chrome
+npm run build:edge
+npm run build:firefox
 
-# Build for browser extension
-npm run build:extension
+# Build and package as .zip for store submission
+npm run package:chrome    # Creates tomato-chrome.zip
+npm run package:edge      # Creates tomato-edge.zip
+npm run package:firefox   # Creates tomato-firefox.zip
 ```
 
 ## Deploy as GitHub Pages
